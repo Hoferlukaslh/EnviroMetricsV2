@@ -112,7 +112,7 @@ class EnviroMetricsApp extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      cardTheme: CardThemeData( // CORRECTION ICI : CardThemeData au lieu de CardTheme
+      cardTheme: CardThemeData(
         color: Colors.white,
         shape: RoundedRectangleBorder(
           side: const BorderSide(color: Colors.black, width: 2), 

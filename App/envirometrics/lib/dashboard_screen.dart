@@ -145,7 +145,7 @@ void _startTimer() {
                 : const Icon(Icons.refresh),
             onPressed: _isLoading ? null : _loadData,
           ),
-          _buildDropdown(provider, periods), // La fonction corrigée est appelée ici
+          _buildDropdown(provider, periods),
         ],
       ),
       drawer: _buildDrawer(context, provider),
@@ -255,7 +255,6 @@ void _startTimer() {
     );
   }
 
-  // --- FONCTION CORRIGÉE ---
   Widget _buildDropdown(DashboardProvider provider, Map<int, String> periods) {
     final isHC = provider.isHighContrast; // Raccourci
 
@@ -263,11 +262,8 @@ void _startTimer() {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        // CORRECTION 1 : En mode e-ink (HC), on rend le fond de la capsule blanc
-        // pour que le texte noir soit visible sur l'AppBar noire.
         color: isHC ? Colors.white : Colors.teal[700], 
         borderRadius: BorderRadius.circular(20),
-        // CORRECTION 2 : On ajoute une bordure noire en e-ink pour le style
         border: isHC ? Border.all(color: Colors.black, width: 2) : null,
       ),
       child: DropdownButtonHideUnderline(
@@ -275,7 +271,6 @@ void _startTimer() {
           value: provider.days,
           // Le fond du menu déroulant lorsqu'il est OUVERT reste blanc en e-ink
           dropdownColor: isHC ? Colors.white : const Color(0xFF004D40),
-          // CORRECTION 3 : L'icône de flèche devient noire en mode e-ink
           icon: Icon(Icons.keyboard_arrow_down, color: isHC ? Colors.black : Colors.white),
           onChanged: (int? n) => n != null ? provider.setDays(n) : null,
           items: periods.entries.map((e) => DropdownMenuItem(

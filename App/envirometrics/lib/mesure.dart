@@ -15,8 +15,6 @@ class Mesure {
 
   factory Mesure.fromJson(Map<String, dynamic> json) {
     return Mesure(
-      // On ajoute .toString() partout pour éviter les erreurs de typage
-      // si l'API PHP renvoie directement un int ou un double.
       timestamp: DateTime.parse(json['timestemp'].toString()), 
       temperature: double.parse(json['temperature'].toString()),
       humidite: double.parse(json['humidite'].toString()),

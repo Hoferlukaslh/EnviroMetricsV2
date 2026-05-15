@@ -55,9 +55,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ? Colors.black 
         : (provider.isDarkMode ? Colors.tealAccent : const Color(0xFF004D40));
 
-    // Style commun pour enlever l'effet "pressé" des Sliders
     final sliderTheme = SliderTheme.of(context).copyWith(
-      overlayColor: Colors.transparent, // Supprime le halo de pression
+      overlayColor: Colors.transparent,
       valueIndicatorShape: const PaddleSliderValueIndicatorShape(),
     );
 

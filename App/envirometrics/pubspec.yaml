@@ -29,6 +29,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.13.1
+  msix: ^3.16.13
 
 flutter_icons:
   android: "launcher_icon"
@@ -42,12 +43,14 @@ flutter_icons:
   windows:
     generate: true
     image_path: "assets/images/logo.png"
-    icon_size: 48 # Optionnel
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/logo.png
 
+# flutter clean
 # flutter pub get
 # flutter pub run flutter_launcher_icons
+
+# Build windows installer : flutter pub run msix:create

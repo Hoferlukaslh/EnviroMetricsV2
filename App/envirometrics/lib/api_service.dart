@@ -12,8 +12,6 @@ class ApiService {
 
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
-        
-        // L'API trie du plus récent au plus ancien, on inverse pour les graphiques
         List<Mesure> mesures = data.map((json) => Mesure.fromJson(json)).toList();
         return mesures.reversed.toList(); 
       } else {
@@ -26,7 +24,6 @@ class ApiService {
 
   Future<List<Appareil>> fetchAppareils({required String url}) async {
   try {
-    // On remplace le nom du fichier PHP dans l'URL de base
     String appareilsUrl = url.replaceAll('get_mesures.php', 'get_appareils.php');
     final response = await http.get(Uri.parse(appareilsUrl));
 
