@@ -1,0 +1,78 @@
+services:
+  php-apache:
+    build: .
+    container_name: mon-serveur-php
+    ports:
+      - "8080:80"
+    volumes:
+      - ./php:/var/www/html/
+    restart: always
+    depends_on:
+      - db
+    networks:       
+      - iot_network 
+
+  db:
+    image: mariadb:latest
+    container_name: mariadb_server
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ${PATH_BDD}:/var/lib/mysql
+    networks:
+      - iot_network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin_gui
+    restart: always
+    ports:
+      - "${PORT_PHPMYADMIN}:80"
+    environment:
+      PMA_HOST: db
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    depends_on:
+      - db
+    networks:
+      - iot_network
+
+  node-red:
+    image: nodered/node-red:latest
+    container_name: nodered_app
+    restart: always
+    user: "1000:1000"
+    ports:
+      - "${PORT_NODERED}:1880"
+    volumes:
+      - ${PATH_NODERED}:/data
+    depends_on:
+      - db
+    networks:
+      - iot_network
+
+
+networks:
+  iot_network:
+    driver: bridge
+
+
+
+##### .env file exemple #####
+# --- CONFIGURATION MARIADB ---
+#DB_ROOT_PASSWORD=pass
+#DB_NAME=EnviroMetrics
+#DB_USER=admin
+#DB_PASSWORD=pass
+#
+## --- CONFIGURATION RÉSEAU & PORTS ---
+#PORT_PHPMYADMIN=1889
+#PORT_MQTT=1883
+#PORT_MQTT_WS=9001
+#
+## --- CHEMINS DES DONNÉES (Facultatif) ---
+#PATH_BDD=./BDD
+#PATH_MOSQUITTO=./mosquitto

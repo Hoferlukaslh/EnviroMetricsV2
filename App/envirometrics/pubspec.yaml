@@ -1,0 +1,44 @@
+name: envirometrics
+description: "Application de monitoring environnemental IoT."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Pour effectuer les requêtes GET vers l'API [cite: 1, 6]
+  http: ^1.1.0
+  # Pour les graphiques de température, humidité et CO2 
+  fl_chart: ^0.70.0 
+  # Pour afficher des jauges modernes (comme sur ta capture)
+  syncfusion_flutter_gauges: ^28.1.33
+  # Pour gérer l'état (sélection du capteur et période)
+  provider: ^6.1.1
+  # Pour formater les dates reçues de l'API 
+  intl: ^0.19.0
+
+  shared_preferences: ^2.2.3
+  
+  wakelock_plus: ^1.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/logo.png" # Le chemin vers ton logo
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/logo.png
+
+# flutter pub get
+# flutter pub run flutter_launcher_icons
