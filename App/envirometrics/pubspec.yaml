@@ -34,6 +34,15 @@ flutter_icons:
   android: "launcher_icon"
   ios: true
   image_path: "assets/images/logo.png" # Le chemin vers ton logo
+  web:
+    generate: true
+    image_path: "assets/images/logo.png"
+    background_color: "#ffffff" # Couleur de fond pour le PWA
+    theme_color: "#ffffff"
+  windows:
+    generate: true
+    image_path: "assets/images/logo.png"
+    icon_size: 48 # Optionnel
 
 flutter:
   uses-material-design: true

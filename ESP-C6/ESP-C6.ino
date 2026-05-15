@@ -36,7 +36,7 @@ void TaskWiFi(void *pvParameters) {
   WiFi.setTxPower(WIFI_POWER_8_5dBm); // Réduction puissance émission
 
   // IP Statique (évite le DHCP à chaque réveil)
-  IPAddress staticIP(192, 168, 1, 250);
+  IPAddress staticIP(192, 168, 1, 251);
   IPAddress gateway(192, 168, 1, 1);
   IPAddress subnet(255, 255, 255, 0);
   WiFi.config(staticIP, gateway, subnet);
@@ -154,7 +154,7 @@ void setup() {
   xEventGroupWaitBits(syncGroup, WIFI_READY_BIT | SENSORS_READY_BIT,
                       pdFALSE, pdTRUE, portMAX_DELAY);
 
-  envois_valeurs(temp_aht, hum_aht, co2_scd, 2);
+  envois_valeurs(temp_aht, hum_aht, co2_scd, 1);
 
   Serial.println("Deep sleep 5 minutes...");
   Serial.flush();
