@@ -1,0 +1,40 @@
+display_name: EnviroMetrics
+package_name: envirometrics
+
+maintainer:
+  name: Lukas Hofer
+  email: lukas.hofer.ju@gmail.com
+
+summary: "Application de monitoring environnemental IoT."
+
+priority: optional
+
+section: x11
+
+installed_size: 15700
+
+dependencies:
+  - mpv
+
+essential: false
+
+icon:  assets/images/logo.png
+
+postuninstall_scripts:
+  - echo "Sorry to see you go."
+
+keywords:
+  - EnviroMetrics
+  - EnviroMetrics
+  - température
+  - humidité
+  - CO2
+  - Air
+
+generic_name: EnviroMetrics
+
+categories:
+  - Development
+  - Utility
+
+startup_notify: true
