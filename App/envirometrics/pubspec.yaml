@@ -43,6 +43,7 @@ flutter_icons:
   windows:
     generate: true
     image_path: "assets/images/logo.png"
+    
 
 flutter:
   uses-material-design: true
@@ -54,3 +55,7 @@ flutter:
 # flutter pub run flutter_launcher_icons
 
 # Build windows installer : flutter pub run msix:create
+
+# Build batch :
+# dart pub global activate flutter_distributor
+#& "C:\Users\x\AppData\Local\Pub\Cache\bin\flutter_distributor.bat" release --name dev

@@ -1,0 +1,6 @@
+display_name: EnviroMetrics
+publisher_name: Lukas
+executable_name: envirometrics
+app_id: com.lukas.envirometrics
+icon_path: "assets/images/logo.png"
+publisher_url: https://github.com/Hoferlukaslh

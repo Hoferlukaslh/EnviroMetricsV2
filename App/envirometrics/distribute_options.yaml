@@ -2,9 +2,34 @@ output: dist/
 releases:
   - name: dev
     jobs:
-      - name: release-dev-linux-deb
+      # --- WINDOWS MSIX ---
+      - name: release-windows-msix
+        package:
+          platform: windows
+          target: msix
+
+      # --- WINDOWS EXE (Classique) ---
+      - name: release-windows-exe
+        package:
+          platform: windows
+          target: exe
+
+      # --- LINUX ---
+      - name: release-linux-deb
         package:
           platform: linux
           target: deb
+
+      # --- WEB ---
+      - name: release-web
+        package:
+          platform: web
+          target: zip # Compresse les fichiers web (index.html, js, etc.)
+
+      # --- ANDROID ---
+      - name: release-android
+        package:
+          platform: android
+          target: apk # Génère l'APK
           build_args:
-            enable-experiment: records
+            release: true # Force le mode release
