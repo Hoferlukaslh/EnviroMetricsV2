@@ -48,9 +48,13 @@ if ($days >= 30) {
     $types .= "i";
     $params[] = $limit;
 
-} else {
-    // --- CLASSIQUE (< 30 JOURS) ---
-    $sql = "SELECT timestemp, temperature, humidite, co2, NO AS app_id 
+} elseif ($days >= 7) {
+    // --- OPTIMISATION 7 à 30 JOURS : Moyenne par heure ---
+    $sql = "SELECT DATE_FORMAT(`timestemp`, '%Y-%m-%d %H:00:00') AS timestemp, 
+                   ROUND(AVG(`temperature`), 2) AS temperature, 
+                   ROUND(AVG(`humidite`), 2) AS humidite, 
+                   ROUND(AVG(`co2`), 2) AS co2, 
+                   MAX(NO) AS app_id 
             FROM Mesures 
             WHERE timestemp >= NOW() - INTERVAL ? DAY";
     $types .= "i";
@@ -62,9 +66,22 @@ if ($days >= 30) {
         $params[] = $app_id;
     }
 
-    // OPTIMISATION >= 7 JOURS : 1 valeur sur 10 (Modulo)
-    if ($days >= 7 && $days < 30) {
-        $sql .= " AND MOD(ID, 10) = 0";
+    $sql .= " GROUP BY DATE_FORMAT(`timestemp`, '%Y-%m-%d %H:00:00') ORDER BY timestemp DESC LIMIT ?";
+    $types .= "i";
+    $params[] = $limit;
+
+} else {
+    // --- CLASSIQUE (< 7 JOURS) : Toutes les valeurs ---
+    $sql = "SELECT timestemp, temperature, humidite, co2, NO AS app_id 
+            FROM Mesures 
+            WHERE timestemp >= NOW() - INTERVAL ? DAY";
+    $types .= "i";
+    $params[] = $days;
+
+    if ($app_id !== null) {
+        $sql .= " AND NO = ?";
+        $types .= "i";
+        $params[] = $app_id;
     }
 
     $sql .= " ORDER BY timestemp DESC LIMIT ?";
