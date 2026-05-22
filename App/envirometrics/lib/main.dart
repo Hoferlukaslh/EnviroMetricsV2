@@ -25,7 +25,7 @@ class DashboardProvider with ChangeNotifier {
     _appId = prefs.getInt('appId') ?? 1;
     _appName = prefs.getString('appName') ?? "Salon";
     _days = prefs.getInt('days') ?? 1;
-    _apiUrl = prefs.getString('apiUrl') ?? 'http://192.168.1.240:8080/get_mesures.php';
+    _apiUrl = prefs.getString('apiUrl') ?? 'https://env.kreativcam.ch/api';
     _refreshRate = prefs.getInt('refreshRate') ?? 30;
     _isDarkMode = prefs.getBool('isDarkMode') ?? true;
     _textScale = prefs.getDouble('textScale') ?? 1.0;

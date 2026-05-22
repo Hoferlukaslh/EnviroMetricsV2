@@ -1,7 +1,7 @@
-name: envirometrics
-description: "Application de monitoring environnemental IoT."
+name: 'envirometrics'
+description: 'Application de monitoring environnemental IoT.'
 publish_to: 'none'
-version: 1.0.0
+version: 1.0.1
 
 environment:
   sdk: ^3.11.0
@@ -57,5 +57,5 @@ flutter:
 # Build windows installer : flutter pub run msix:create
 
 # Build batch :
-# dart pub global activate flutter_distributor
-#& "C:\Users\x\AppData\Local\Pub\Cache\bin\flutter_distributor.bat" release --name dev
+#dart pub global activate flutter_distributor
+#& "C:\Users\lukas\AppData\Local\Pub\Cache\bin\flutter_distributor.bat" release --name dev          

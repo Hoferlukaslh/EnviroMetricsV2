@@ -1,40 +1,63 @@
 import 'dart:convert';
-import 'mesure.dart';
 import 'package:http/http.dart' as http;
+
+import 'mesure.dart';
 import 'appareil.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.1.240:8080/get_mesures.php';
+  
+  /// Nettoie l'URL : retire le slash final et force le HTTPS pour les domaines spécifiques
+  String _sanitizeUrl(String url) {
+    String cleanUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
+
+    //  On force le HTTPS
+    if (cleanUrl.startsWith('http://') && cleanUrl.contains('env.kreativcam.ch')) {
+      cleanUrl = cleanUrl.replaceFirst('http://', 'https://');
+    }
+    
+    return cleanUrl;
+  }
 
   Future<List<Mesure>> fetchMesures(int appId, int days, {required String url}) async {
-  try {
-      final response = await http.get(Uri.parse('$url?app_id=$appId&days=$days'));
+    try {
+      final baseUrl = _sanitizeUrl(url);
+      
+      // Utilisation de queryParameters pour un encodage automatique et sécurisé
+      final uri = Uri.parse('$baseUrl/mesures').replace(
+        queryParameters: {
+          'app_id': appId.toString(),
+          'days': days.toString(),
+        },
+      );
+
+      final response = await http.get(uri);
 
       if (response.statusCode == 200) {
-        List<dynamic> data = json.decode(response.body);
-        List<Mesure> mesures = data.map((json) => Mesure.fromJson(json)).toList();
-        return mesures.reversed.toList(); 
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => Mesure.fromJson(json)).toList();
       } else {
-        throw Exception('Erreur de chargement des données');
+        throw Exception('Erreur de chargement des données (Code: ${response.statusCode})');
       }
     } catch (e) {
-      throw Exception('Erreur de connexion: $e');
+      throw Exception('Erreur de connexion lors de la récupération des mesures: $e');
     }
   }
 
   Future<List<Appareil>> fetchAppareils({required String url}) async {
-  try {
-    String appareilsUrl = url.replaceAll('get_mesures.php', 'get_appareils.php');
-    final response = await http.get(Uri.parse(appareilsUrl));
+    try {
+      final baseUrl = _sanitizeUrl(url);
+      final uri = Uri.parse('$baseUrl/appareils');
 
-    if (response.statusCode == 200) {
-      List<dynamic> data = json.decode(response.body);
-      return data.map((json) => Appareil.fromJson(json)).toList();
-    } else {
-      throw Exception('Erreur de chargement des appareils');
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        return data.map((json) => Appareil.fromJson(json)).toList();
+      } else {
+        throw Exception('Erreur de chargement des appareils (Code: ${response.statusCode})');
+      }
+    } catch (e) {
+      throw Exception('Erreur de connexion lors de la récupération des appareils: $e');
     }
-  } catch (e) {
-    throw Exception('Erreur de connexion : $e');
   }
-}
 }
