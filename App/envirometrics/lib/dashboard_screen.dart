@@ -26,8 +26,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   int? _lastDays;
   String? _lastUrl;
   int? _lastRefreshRate;
-bool? _lastHighContrast;
-bool _eInkToggle = false;
+  bool? _lastHighContrast;
+  bool _eInkToggle = false;
 
   @override
   void initState() {
@@ -73,15 +73,15 @@ bool _eInkToggle = false;
     });
   }
 
-void _startTimer() {
-  _refreshTimer?.cancel();
-  // On utilise listen: false ici car c'est un callback asynchrone
-  final provider = Provider.of<DashboardProvider>(context, listen: false);
-  
-  _refreshTimer = Timer.periodic(Duration(seconds: provider.refreshRate), (timer) {
-    if (!_isLoading) _loadData();
-  });
-}
+  void _startTimer() {
+    _refreshTimer?.cancel();
+    // On utilise listen: false ici car c'est un callback asynchrone
+    final provider = Provider.of<DashboardProvider>(context, listen: false);
+    
+    _refreshTimer = Timer.periodic(Duration(seconds: provider.refreshRate), (timer) {
+      if (!_isLoading) _loadData();
+    });
+  }
 
   Future<void> _loadData() async {
     final provider = Provider.of<DashboardProvider>(context, listen: false);
@@ -101,7 +101,7 @@ void _startTimer() {
       
       if (mounted) {
         setState(() {
-          _mesures = newData;
+          _mesures = newData.reversed.toList();// inverse les données pour les avoir chronologiquement (de gauche à droite)
           _isLoading = false;
           _eInkToggle = !_eInkToggle;
         });
@@ -128,10 +128,10 @@ void _startTimer() {
     final periods = {1: '24H', 2: '2 J', 7: '7 J', 30: '30 J', 90: '90 J'};
 
     return Scaffold(
-    backgroundColor: provider.isHighContrast 
-          ? (_eInkToggle ? const Color(0xFFFEFEFE) : Colors.white) 
-          : null, // Laisse le thème gérer la couleur si on n'est pas en E-ink
-          
+      backgroundColor: provider.isHighContrast 
+            ? (_eInkToggle ? const Color(0xFFFEFEFE) : Colors.white) 
+            : null, // Laisse le thème gérer la couleur si on n'est pas en E-ink
+            
       appBar: AppBar(
         title: Text(provider.appName),
         actions: [
@@ -189,6 +189,9 @@ void _startTimer() {
     
     Color mainColor = isHC ? Colors.black : color;
 
+    // Détermination automatique de l'unité selon la métrique actuelle
+    String unit = title == "Température" ? " °C" : title == "Humidité" ? " %" : " ppm";
+
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -214,6 +217,49 @@ void _startTimer() {
                 LineChartData(
                   minY: min, maxY: max,
                   clipData: const FlClipData.all(),
+                  
+                  // Curseur personnalisé (Valeur en haut + Unité)
+                  lineTouchData: LineTouchData(
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (LineBarSpot touchedSpot) => isDark || isHC ? Colors.grey[800]! : Colors.blueGrey[700]!,
+                      getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final int index = spot.x.toInt();
+                          if (index < 0 || index >= data.length) return null;
+
+                          final DateTime date = data[index].timestamp;
+                          final String dateStr = "${date.day.toString().padLeft(2, '0')}/"
+                                                 "${date.month.toString().padLeft(2, '0')}/"
+                                                 "${date.year.toString().substring(2)} "
+                                                 "${date.hour.toString().padLeft(2, '0')}:"
+                                                 "${date.minute.toString().padLeft(2, '0')}";
+                          
+                          final String valueStr = spot.y.toStringAsFixed(1);
+
+                          // On met la valeur + l'unité en texte principal (en gras), et la date en dessous (children)
+                          return LineTooltipItem(
+                            '$valueStr$unit\n',
+                            TextStyle(
+                              color: mainColor == Colors.black ? Colors.white : mainColor, 
+                              fontSize: 14, 
+                              fontWeight: FontWeight.bold
+                            ),
+                            children: [
+                              TextSpan(
+                                text: dateStr,
+                                style: const TextStyle(
+                                  color: Colors.white70, 
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.normal
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
+                  
                   gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (v) => FlLine(color: textColor.withOpacity(isHC ? 0.2 : 0.05))),
                   titlesData: FlTitlesData(
                     show: true,
@@ -247,6 +293,7 @@ void _startTimer() {
                     ),
                   ],
                 ),
+                
               ),
             ),
           ],
@@ -256,7 +303,7 @@ void _startTimer() {
   }
 
   Widget _buildDropdown(DashboardProvider provider, Map<int, String> periods) {
-    final isHC = provider.isHighContrast; // Raccourci
+    final isHC = provider.isHighContrast;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -269,16 +316,14 @@ void _startTimer() {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<int>(
           value: provider.days,
-          // Le fond du menu déroulant lorsqu'il est OUVERT reste blanc en e-ink
           dropdownColor: isHC ? Colors.white : const Color(0xFF004D40),
           icon: Icon(Icons.keyboard_arrow_down, color: isHC ? Colors.black : Colors.white),
           onChanged: (int? n) => n != null ? provider.setDays(n) : null,
           items: periods.entries.map((e) => DropdownMenuItem(
             value: e.key, 
             child: Text(e.value, style: TextStyle(
-              // Le texte est bien noir en mode e-ink sur fond blanc
               color: isHC ? Colors.black : Colors.white,
-              fontWeight: isHC ? FontWeight.bold : FontWeight.normal // Un peu plus gras pour l'e-ink
+              fontWeight: isHC ? FontWeight.bold : FontWeight.normal 
             ))
           )).toList(),
         ),
