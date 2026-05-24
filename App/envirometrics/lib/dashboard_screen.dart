@@ -178,7 +178,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildMetricBlock(String title, String value, List<Mesure> data, double Function(Mesure) map, Color color, double min, double max, List<double> limits, bool isWarning) {
+  Widget _buildMetricBlock(String title, String value, List<Mesure> data, double Function(Mesure) map, Color color, double min, double max, List<double> limits, bool isWarning, {bool isDialog = false}) {
     final provider = Provider.of<DashboardProvider>(context);
     final bool isDark = provider.isDarkMode;
     final bool isHC = provider.isHighContrast;
@@ -192,112 +192,153 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     // Détermination automatique de l'unité selon la métrique actuelle
     String unit = title == "Température" ? " °C" : title == "Humidité" ? " %" : " ppm";
 
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        padding: const EdgeInsets.fromLTRB(12, 12, 16, 8),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(isHC ? 4 : 16),
-          border: isHC ? Border.all(color: Colors.black, width: 2) : null,
-          boxShadow: (isDark || isHC) ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))],
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(title, style: TextStyle(color: mainColor, fontSize: 16, fontWeight: FontWeight.bold)),
-                _BlinkingValue(value: value, isWarning: isWarning, color: textColor, isHC: isHC),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: LineChart(
-                LineChartData(
-                  minY: min, maxY: max,
-                  clipData: const FlClipData.all(),
-                  
+    // Le contenu visuel de la carte (graphique + textes)
+    Widget cardContent = Container(
+      margin: isDialog ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.fromLTRB(12, 12, 16, 8),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(isHC ? 4 : 16),
+        border: isHC ? Border.all(color: Colors.black, width: 2) : null,
+        boxShadow: (isDark || isHC) ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: TextStyle(color: mainColor, fontSize: isDialog ? 20 : 16, fontWeight: FontWeight.bold)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _BlinkingValue(value: value, isWarning: isWarning, color: textColor, isHC: isHC),
+                  // Ajout du bouton fermé uniquement si on est en plein écran
+                  if (isDialog) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(Icons.close, color: textColor, size: 28),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: LineChart(
+              LineChartData(
+                minY: min, maxY: max,
+                clipData: const FlClipData.all(),
+                
                   // Curseur personnalisé (Valeur en haut + Unité)
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipColor: (LineBarSpot touchedSpot) => isDark || isHC ? Colors.grey[800]! : Colors.blueGrey[700]!,
-                      getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          final int index = spot.x.toInt();
-                          if (index < 0 || index >= data.length) return null;
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (LineBarSpot touchedSpot) => isDark || isHC ? Colors.grey[800]! : Colors.blueGrey[700]!,
+                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        final int index = spot.x.toInt();
+                        if (index < 0 || index >= data.length) return null;
 
-                          final DateTime date = data[index].timestamp;
-                          final String dateStr = "${date.day.toString().padLeft(2, '0')}/"
-                                                 "${date.month.toString().padLeft(2, '0')}/"
-                                                 "${date.year.toString().substring(2)} "
-                                                 "${date.hour.toString().padLeft(2, '0')}:"
-                                                 "${date.minute.toString().padLeft(2, '0')}";
-                          
-                          final String valueStr = spot.y.toStringAsFixed(1);
+                        final DateTime date = data[index].timestamp;
+                        final String dateStr = "${date.day.toString().padLeft(2, '0')}/"
+                                               "${date.month.toString().padLeft(2, '0')}/"
+                                               "${date.year.toString().substring(2)} "
+                                               "${date.hour.toString().padLeft(2, '0')}:"
+                                               "${date.minute.toString().padLeft(2, '0')}";
+                        
+                        final String valueStr = spot.y.toStringAsFixed(1);
 
                           // On met la valeur + l'unité en texte principal (en gras), et la date en dessous (children)
-                          return LineTooltipItem(
-                            '$valueStr$unit\n',
-                            TextStyle(
-                              color: mainColor == Colors.black ? Colors.white : mainColor, 
-                              fontSize: 14, 
-                              fontWeight: FontWeight.bold
-                            ),
-                            children: [
-                              TextSpan(
-                                text: dateStr,
-                                style: const TextStyle(
-                                  color: Colors.white70, 
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.normal
-                                ),
+                        return LineTooltipItem(
+                          '$valueStr$unit\n',
+                          TextStyle(
+                            color: mainColor == Colors.black ? Colors.white : mainColor, 
+                            fontSize: 14, 
+                            fontWeight: FontWeight.bold
+                          ),
+                          children: [
+                            TextSpan(
+                              text: dateStr,
+                              style: const TextStyle(
+                                color: Colors.white70, 
+                                fontSize: 10,
+                                fontWeight: FontWeight.normal
                               ),
-                            ],
-                          );
-                        }).toList();
+                            ),
+                          ],
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
+                
+                gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (v) => FlLine(color: textColor.withOpacity(isHC ? 0.2 : 0.05))),
+                titlesData: FlTitlesData(
+                  show: true,
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 22,
+                      interval: (data.length / 5).clamp(1, double.infinity),
+                      getTitlesWidget: (value, meta) {
+                        int index = value.toInt();
+                        if (index >= 0 && index < data.length) {
+                          DateTime date = data[index].timestamp;
+                          String text = provider.days <= 2 ? "${date.hour}:${date.minute.toString().padLeft(2, '0')}" : "${date.day}/${date.month}";
+                          return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10, fontWeight: isHC ? FontWeight.bold : FontWeight.normal));
+                        }
+                        return const SizedBox.shrink();
                       },
                     ),
                   ),
-                  
-                  gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (v) => FlLine(color: textColor.withOpacity(isHC ? 0.2 : 0.05))),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 22,
-                        interval: (data.length / 5).clamp(1, double.infinity),
-                        getTitlesWidget: (value, meta) {
-                          int index = value.toInt();
-                          if (index >= 0 && index < data.length) {
-                            DateTime date = data[index].timestamp;
-                            String text = provider.days <= 2 ? "${date.hour}:${date.minute.toString().padLeft(2, '0')}" : "${date.day}/${date.month}";
-                            return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10, fontWeight: isHC ? FontWeight.bold : FontWeight.normal));
-                          }
-                          return const SizedBox.shrink();
-                        },
-                      ),
-                    ),
-                    leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40, getTitlesWidget: (v, m) => Text(v.toStringAsFixed(0), style: TextStyle(color: axisTextColor, fontSize: 10)))),
-                  ),
-                  borderData: FlBorderData(show: isHC, border: Border.all(color: Colors.black, width: 1)),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: data.asMap().entries.map((e) => FlSpot(e.key.toDouble(), map(e.value).clamp(min, max))).toList(),
-                      isCurved: !isHC,
-                      color: mainColor, barWidth: isHC ? 2 : 3, dotData: const FlDotData(show: false),
-                      belowBarData: BarAreaData(show: !isHC, color: mainColor.withOpacity(0.08)),
-                    ),
-                  ],
+                  leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40, getTitlesWidget: (v, m) => Text(v.toStringAsFixed(0), style: TextStyle(color: axisTextColor, fontSize: 10)))),
                 ),
-                
+                borderData: FlBorderData(show: isHC, border: Border.all(color: Colors.black, width: 1)),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: data.asMap().entries.map((e) => FlSpot(e.key.toDouble(), map(e.value).clamp(min, max))).toList(),
+                    isCurved: !isHC,
+                    color: mainColor, barWidth: isHC ? 2 : 3, dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(show: !isHC, color: mainColor.withOpacity(0.08)),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+
+    // Si on est DÉJÀ dans la popup, on retourne juste le contenu
+    if (isDialog) {
+      return cardContent;
+    }
+
+    // Sinon, on wrap le contenu pour qu'il soit cliquable et qu'il ouvre la popup
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              backgroundColor: Colors.transparent, // On laisse le fond de cardContent gérer la couleur
+              elevation: 0,
+              insetPadding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height * 0.9, // 90% de la hauteur de l'écran
+                // On rappelle la même fonction, mais avec isDialog = true
+                child: _buildMetricBlock(title, value, data, map, color, min, max, limits, isWarning, isDialog: true),
+              ),
+            ),
+          );
+        },
+        child: cardContent,
       ),
     );
   }
@@ -323,7 +364,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             value: e.key, 
             child: Text(e.value, style: TextStyle(
               color: isHC ? Colors.black : Colors.white,
-              fontWeight: isHC ? FontWeight.bold : FontWeight.normal 
+              fontWeight: isHC ? FontWeight.bold : FontWeight.normal
             ))
           )).toList(),
         ),
