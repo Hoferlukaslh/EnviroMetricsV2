@@ -333,9 +333,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                                                "${date.hour.toString().padLeft(2, '0')}:"
                                                "${date.minute.toString().padLeft(2, '0')}";
                         
-                        final String valueStr = spot.y.toStringAsFixed(1);
+                        // ICI LA CORRECTION : On va chercher la VRAIE valeur dans la liste `data`
+                        // au lieu de prendre la valeur Y de `spot` qui est visuellement contrainte.
+                        final double realValue = map(data[index]);
+                        final String valueStr = realValue.toStringAsFixed(1);
 
-                        // On met la valeur + l'unité en texte principal (en gras), et la date en dessous (children)
                         return LineTooltipItem(
                           '$valueStr$unit\n',
                           TextStyle(
@@ -385,6 +387,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 borderData: FlBorderData(show: isHC, border: Border.all(color: Colors.black, width: 1)),
                 lineBarsData: [
                   LineChartBarData(
+                    // ICI LA CORRECTION : On remet le .clamp(min, max) pour l'affichage visuel
+                    // pour que la barre de sélection ne déborde plus.
                     spots: data.asMap().entries.map((e) => FlSpot(e.key.toDouble(), map(e.value).clamp(min, max))).toList(),
                     isCurved: !isHC,
                     color: mainColor, barWidth: isHC ? 2 : 3, dotData: const FlDotData(show: false),
