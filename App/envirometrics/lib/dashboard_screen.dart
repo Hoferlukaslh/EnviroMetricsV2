@@ -17,7 +17,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
-  List<Mesure>? _mesures;
+  final ValueNotifier<List<Mesure>?> _mesuresNotifier = ValueNotifier(null);
   bool _isLoading = false;
   String? _error;
   bool _isFullscreen = false;
@@ -100,8 +100,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       );
       
       if (mounted) {
+        _mesuresNotifier.value = newData.reversed.toList(); // inverse les données pour les avoir chronologiquement (de gauche à droite)
         setState(() {
-          _mesures = newData.reversed.toList();// inverse les données pour les avoir chronologiquement (de gauche à droite)
           _isLoading = false;
           _eInkToggle = !_eInkToggle;
         });
@@ -110,7 +110,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       if (mounted) {
         setState(() {
           _isLoading = false;
-          if (_mesures == null) _error = "Erreur de connexion";
+          if (_mesuresNotifier.value == null) _error = "Erreur de connexion";
         });
       }
     }
@@ -119,6 +119,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _mesuresNotifier.dispose();
     super.dispose();
   }
 
@@ -154,31 +155,100 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   Widget _buildBody(DashboardProvider provider) {
-    if (_mesures == null && _isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    return ValueListenableBuilder<List<Mesure>?>(
+      valueListenable: _mesuresNotifier,
+      builder: (context, data, _) {
+        if (data == null && _isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    if (_error != null && _mesures == null) {
-      return Center(child: Text(_error!));
-    }
+        if (_error != null && data == null) {
+          return Center(child: Text(_error!));
+        }
 
-    if (_mesures == null || _mesures!.isEmpty) {
-      return const Center(child: Text('Aucune donnée disponible'));
-    }
+        if (data == null || data.isEmpty) {
+          return const Center(child: Text('Aucune donnée disponible'));
+        }
 
-    final data = _mesures!;
-    final last = data.last;
-
-    return Column(
-      children: [
-        _buildMetricBlock("Température", "${last.temperature} °C", data, (m) => m.temperature, Colors.orange, 15, 40, [18, 25], last.temperature < 18 || last.temperature > 25),
-        _buildMetricBlock("Humidité", "${last.humidite} %", data, (m) => m.humidite, Colors.blue, 20, 80, [40, 60], last.humidite < 40 || last.humidite > 60),
-        _buildMetricBlock("CO2", "${last.co2} ppm", data, (m) => m.co2, Colors.green, 350, 1500, [800, 1200], last.co2 > 800),
-      ],
+        return Column(
+          children: [
+            _buildMetricBlock("Température", data, (m) => m.temperature, Colors.orange, 15, 40, (m) => m.temperature < 18 || m.temperature > 25),
+            _buildMetricBlock("Humidité", data, (m) => m.humidite, Colors.blue, 20, 80, (m) => m.humidite < 40 || m.humidite > 60),
+            _buildMetricBlock("CO2", data, (m) => m.co2, Colors.green, 350, 1500, (m) => m.co2 > 800),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildMetricBlock(String title, String value, List<Mesure> data, double Function(Mesure) map, Color color, double min, double max, List<double> limits, bool isWarning, {bool isDialog = false}) {
+  String _formatValue(String title, Mesure m) {
+    if (title == "Température") return "${m.temperature} °C";
+    if (title == "Humidité") return "${m.humidite} %";
+    return "${m.co2} ppm";
+  }
+
+  Widget _buildMetricBlock(
+    String title, 
+    List<Mesure> data, 
+    double Function(Mesure) map, 
+    Color color, 
+    double min, 
+    double max, 
+    bool Function(Mesure) checkWarning
+  ) {
+    final last = data.last;
+    final isWarning = checkWarning(last);
+    final valueStr = _formatValue(title, last);
+
+    // Contenu pour la page principale
+    Widget cardContent = _buildCardContent(title, valueStr, data, map, color, min, max, isWarning, false);
+
+    // On wrap le contenu pour qu'il soit cliquable et qu'il ouvre la popup
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) => Dialog(
+              backgroundColor: Colors.transparent, // Le fond est géré par la carte
+              elevation: 0,
+              insetPadding: const EdgeInsets.all(16),
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width,
+                height: MediaQuery.of(context).size.height * 0.9,
+                child: ValueListenableBuilder<List<Mesure>?>(
+                  // Le ValueListenableBuilder ici permet au popup de se mettre à jour en temps réel !
+                  valueListenable: _mesuresNotifier,
+                  builder: (context, dialogData, _) {
+                    if (dialogData == null || dialogData.isEmpty) return const SizedBox.shrink();
+                    
+                    final dLast = dialogData.last;
+                    final dIsWarning = checkWarning(dLast);
+                    final dValueStr = _formatValue(title, dLast);
+
+                    return _buildCardContent(title, dValueStr, dialogData, map, color, min, max, dIsWarning, true);
+                  }
+                ),
+              ),
+            ),
+          );
+        },
+        child: cardContent,
+      ),
+    );
+  }
+
+  Widget _buildCardContent(
+    String title, 
+    String value, 
+    List<Mesure> data, 
+    double Function(Mesure) map, 
+    Color color, 
+    double min, 
+    double max, 
+    bool isWarning, 
+    bool isDialog
+  ) {
     final provider = Provider.of<DashboardProvider>(context);
     final bool isDark = provider.isDarkMode;
     final bool isHC = provider.isHighContrast;
@@ -192,8 +262,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     // Détermination automatique de l'unité selon la métrique actuelle
     String unit = title == "Température" ? " °C" : title == "Humidité" ? " %" : " ppm";
 
-    // Le contenu visuel de la carte (graphique + textes)
-    Widget cardContent = Container(
+    return Container(
       margin: isDialog ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       padding: const EdgeInsets.fromLTRB(12, 12, 16, 8),
       decoration: BoxDecoration(
@@ -212,7 +281,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _BlinkingValue(value: value, isWarning: isWarning, color: textColor, isHC: isHC),
-                  // Ajout du bouton fermé uniquement si on est en plein écran
+                  // Ajout du bouton fermé uniquement si on est dans le pop-up
                   if (isDialog) ...[
                     const SizedBox(width: 8),
                     IconButton(
@@ -233,7 +302,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 minY: min, maxY: max,
                 clipData: const FlClipData.all(),
                 
-                  // Curseur personnalisé (Valeur en haut + Unité)
+                // Curseur personnalisé (Valeur en haut + Unité)
                 lineTouchData: LineTouchData(
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipColor: (LineBarSpot touchedSpot) => isDark || isHC ? Colors.grey[800]! : Colors.blueGrey[700]!,
@@ -251,7 +320,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         
                         final String valueStr = spot.y.toStringAsFixed(1);
 
-                          // On met la valeur + l'unité en texte principal (en gras), et la date en dessous (children)
+                        // On met la valeur + l'unité en texte principal (en gras), et la date en dessous (children)
                         return LineTooltipItem(
                           '$valueStr$unit\n',
                           TextStyle(
@@ -311,34 +380,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             ),
           ),
         ],
-      ),
-    );
-
-    // Si on est DÉJÀ dans la popup, on retourne juste le contenu
-    if (isDialog) {
-      return cardContent;
-    }
-
-    // Sinon, on wrap le contenu pour qu'il soit cliquable et qu'il ouvre la popup
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          showDialog(
-            context: context,
-            builder: (context) => Dialog(
-              backgroundColor: Colors.transparent, // On laisse le fond de cardContent gérer la couleur
-              elevation: 0,
-              insetPadding: const EdgeInsets.all(16),
-              child: SizedBox(
-                width: MediaQuery.of(context).size.width,
-                height: MediaQuery.of(context).size.height * 0.9, // 90% de la hauteur de l'écran
-                // On rappelle la même fonction, mais avec isDialog = true
-                child: _buildMetricBlock(title, value, data, map, color, min, max, limits, isWarning, isDialog: true),
-              ),
-            ),
-          );
-        },
-        child: cardContent,
       ),
     );
   }
@@ -437,14 +478,20 @@ class _BlinkingValueState extends State<_BlinkingValue> with SingleTickerProvide
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    // on initialise le controleur avec value: 1.0 (totalement visible)
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 500), value: 1.0);
     if (widget.isWarning && !widget.isHC) _controller.repeat(reverse: true);
   }
   @override
   void didUpdateWidget(_BlinkingValue oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isWarning && !widget.isHC) { if (!_controller.isAnimating) _controller.repeat(reverse: true); } 
-    else { _controller.stop(); _controller.value = 1.0; }
+    if (widget.isWarning && !widget.isHC) { 
+      if (!_controller.isAnimating) _controller.repeat(reverse: true); 
+    } 
+    else { 
+      _controller.stop(); 
+      _controller.value = 1.0; 
+    }
   }
   @override
   void dispose() { _controller.dispose(); super.dispose(); }
