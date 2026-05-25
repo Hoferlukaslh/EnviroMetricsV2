@@ -172,9 +172,24 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
 
         return Column(
           children: [
-            _buildMetricBlock("Température", data, (m) => m.temperature, Colors.orange, 15, 40, (m) => m.temperature < 18 || m.temperature > 25),
-            _buildMetricBlock("Humidité", data, (m) => m.humidite, Colors.blue, 20, 80, (m) => m.humidite < 40 || m.humidite > 60),
-            _buildMetricBlock("CO2", data, (m) => m.co2, Colors.green, 350, 1500, (m) => m.co2 > 800),
+            _buildMetricBlock(
+              "Température", data, 
+              (m) => m.temperature, Colors.orange, 
+              provider.tempMin, provider.tempMax, 
+              (m) => m.temperature < 18 || m.temperature > 25
+            ),
+            _buildMetricBlock(
+              "Humidité", data, 
+              (m) => m.humidite, Colors.blue, 
+              provider.humMin, provider.humMax, 
+              (m) => m.humidite < 40 || m.humidite > 60
+            ),
+            _buildMetricBlock(
+              "CO2", data, 
+              (m) => m.co2, Colors.green, 
+              provider.co2Min, provider.co2Max, 
+              (m) => m.co2 > 800
+            ),
           ],
         );
       },

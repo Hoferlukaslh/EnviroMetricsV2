@@ -18,6 +18,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _defaultAppId = 1;
   List<Appareil> _appareilsDisponibles = [];
 
+  // Graph Bounds
+  RangeValues _tempRange = const RangeValues(15, 40);
+  RangeValues _humRange = const RangeValues(20, 80);
+  RangeValues _co2Range = const RangeValues(350, 1500);
+
   @override
   void initState() {
     super.initState();
@@ -25,6 +30,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _urlController.text = provider.apiUrl;
     _refreshRate = provider.refreshRate;
     _defaultAppId = provider.appId;
+    
+    _tempRange = RangeValues(provider.tempMin, provider.tempMax);
+    _humRange = RangeValues(provider.humMin, provider.humMax);
+    _co2Range = RangeValues(provider.co2Min, provider.co2Max);
   }
 
   Future<void> _testConnection() async {
@@ -84,10 +93,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (v) => provider.setHighContrast(v),
           ),
 
+          const Divider(height: 30),
+
+          Text("Limites des Graphiques (Min - Max)", 
+            style: TextStyle(color: sectionTitleColor, fontWeight: FontWeight.bold, fontSize: 18)),
+          const SizedBox(height: 15),
+          
+          Text("Température : ${_tempRange.start.round()}°C - ${_tempRange.end.round()}°C"),
+          RangeSlider(
+            values: _tempRange,
+            min: -20, max: 80, divisions: 100,
+            labels: RangeLabels("${_tempRange.start.round()}", "${_tempRange.end.round()}"),
+            onChanged: (v) => setState(() => _tempRange = v),
+          ),
+          const SizedBox(height: 10),
+
+          Text("Humidité : ${_humRange.start.round()}% - ${_humRange.end.round()}%"),
+          RangeSlider(
+            values: _humRange,
+            min: 0, max: 100, divisions: 100,
+            labels: RangeLabels("${_humRange.start.round()}", "${_humRange.end.round()}"),
+            onChanged: (v) => setState(() => _humRange = v),
+          ),
+          const SizedBox(height: 10),
+
+          Text("CO2 : ${_co2Range.start.round()} ppm - ${_co2Range.end.round()} ppm"),
+          RangeSlider(
+            values: _co2Range,
+            min: 0, max: 5000, divisions: 500,
+            labels: RangeLabels("${_co2Range.start.round()}", "${_co2Range.end.round()}"),
+            onChanged: (v) => setState(() => _co2Range = v),
+          ),
+
           const Divider(height: 40),
 
           Text("Configuration API", 
-            style: TextStyle(color: sectionTitleColor, fontWeight: FontWeight.bold)),
+            style: TextStyle(color: sectionTitleColor, fontWeight: FontWeight.bold, fontSize: 18)),
           const SizedBox(height: 10),
           TextField(
             controller: _urlController,
@@ -176,12 +217,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   orElse: () => Appareil(id: _defaultAppId, nom: provider.appName),
                 );
 
+                // Sauvegarder les limites des graphiques
+                provider.updateChartBounds(
+                  _tempRange.start, _tempRange.end, 
+                  _humRange.start, _humRange.end, 
+                  _co2Range.start, _co2Range.end
+                );
+
+                // Sauvegarder les paramètres généraux
                 provider.updateSettings(
                   _urlController.text, 
                   _refreshRate, 
                   _defaultAppId, 
                   selectedApp.nom
                 );
+
                 Navigator.pop(context);
               },
               child: const Text("SAUVEGARDER", style: TextStyle(fontWeight: FontWeight.bold)),

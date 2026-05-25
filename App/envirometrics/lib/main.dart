@@ -30,6 +30,14 @@ class DashboardProvider with ChangeNotifier {
     _isDarkMode = prefs.getBool('isDarkMode') ?? true;
     _textScale = prefs.getDouble('textScale') ?? 1.0;
     _isHighContrast = prefs.getBool('isHighContrast') ?? false;
+
+    // Limites des graphiques
+    _tempMin = prefs.getDouble('tempMin') ?? 15.0;
+    _tempMax = prefs.getDouble('tempMax') ?? 40.0;
+    _humMin = prefs.getDouble('humMin') ?? 20.0;
+    _humMax = prefs.getDouble('humMax') ?? 80.0;
+    _co2Min = prefs.getDouble('co2Min') ?? 350.0;
+    _co2Max = prefs.getDouble('co2Max') ?? 1500.0;
   }
 
   late int _appId;
@@ -41,6 +49,13 @@ class DashboardProvider with ChangeNotifier {
   late double _textScale;
   late bool _isHighContrast;
 
+  late double _tempMin;
+  late double _tempMax;
+  late double _humMin;
+  late double _humMax;
+  late double _co2Min;
+  late double _co2Max;
+
   int get appId => _appId;
   String get appName => _appName;
   int get days => _days;
@@ -49,6 +64,13 @@ class DashboardProvider with ChangeNotifier {
   bool get isDarkMode => _isDarkMode;
   double get textScale => _textScale;
   bool get isHighContrast => _isHighContrast;
+
+  double get tempMin => _tempMin;
+  double get tempMax => _tempMax;
+  double get humMin => _humMin;
+  double get humMax => _humMax;
+  double get co2Min => _co2Min;
+  double get co2Max => _co2Max;
 
   void setDarkMode(bool value) {
     _isDarkMode = value;
@@ -91,6 +113,28 @@ class DashboardProvider with ChangeNotifier {
     prefs.setInt('refreshRate', rate);
     prefs.setInt('appId', defaultId);
     prefs.setString('appName', defaultName);
+    notifyListeners();
+  }
+
+  void updateChartBounds(
+    double tMin, double tMax, 
+    double hMin, double hMax, 
+    double cMin, double cMax
+  ) {
+    _tempMin = tMin;
+    _tempMax = tMax;
+    _humMin = hMin;
+    _humMax = hMax;
+    _co2Min = cMin;
+    _co2Max = cMax;
+
+    prefs.setDouble('tempMin', tMin);
+    prefs.setDouble('tempMax', tMax);
+    prefs.setDouble('humMin', hMin);
+    prefs.setDouble('humMax', hMax);
+    prefs.setDouble('co2Min', cMin);
+    prefs.setDouble('co2Max', cMax);
+
     notifyListeners();
   }
 }
