@@ -102,7 +102,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text("Température : ${_tempRange.start.round()}°C - ${_tempRange.end.round()}°C"),
           RangeSlider(
             values: _tempRange,
-            min: -20, max: 80, divisions: 100,
+            min: -10, max: 50, divisions: 100,
             labels: RangeLabels("${_tempRange.start.round()}", "${_tempRange.end.round()}"),
             onChanged: (v) => setState(() => _tempRange = v),
           ),
@@ -120,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text("CO2 : ${_co2Range.start.round()} ppm - ${_co2Range.end.round()} ppm"),
           RangeSlider(
             values: _co2Range,
-            min: 0, max: 5000, divisions: 500,
+            min: 100, max: 2500, divisions: 500,
             labels: RangeLabels("${_co2Range.start.round()}", "${_co2Range.end.round()}"),
             onChanged: (v) => setState(() => _co2Range = v),
           ),
