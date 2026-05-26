@@ -58,4 +58,8 @@ flutter:
 
 # Build batch :
 #dart pub global activate flutter_distributor
-#& "C:\Users\lukas\AppData\Local\Pub\Cache\bin\flutter_distributor.bat" release --name dev          
+
+# windows:
+#   & "C:\Users\lukas\AppData\Local\Pub\Cache\bin\flutter_distributor.bat" release --name dev     
+# debian :      
+#   ~/.pub-cache/bin/flutter_distributor release --name dev
