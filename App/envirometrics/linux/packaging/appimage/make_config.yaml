@@ -3,6 +3,6 @@ package: envirometrics
 maintainer: Lukas <lukas.hofer.ju@gmail.com>
 summary: "Application de monitoring environnemental IoT."
 description: "Application de monitoring environnemental IoT."
-categories: "Utility;"
+categories: 
+  - Utility
 icon: assets/images/logo.png
-# Non testé

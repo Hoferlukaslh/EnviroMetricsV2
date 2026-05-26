@@ -2,23 +2,30 @@ output: dist/
 releases:
   - name: dev
     jobs:
-      # --- WINDOWS MSIX ---
+      ## --- WINDOWS MSIX ---
       - name: release-windows-msix
         package:
           platform: windows
           target: msix
 
-      # --- WINDOWS EXE (Classique) ---
+      ## --- WINDOWS EXE (Classique) ---
       - name: release-windows-exe
         package:
           platform: windows
           target: exe
 
-      # --- LINUX ---
+      # --- LINUX (debian) ---
       - name: release-linux-deb
         package:
           platform: linux
           target: deb
+
+      # --- LINUX (AppImage) --- # voir : https://appimage-builder.readthedocs.io/en/0.9.2/intro/install.html
+      - name: release-linux-deb
+        package:
+          platform: linux
+          target: appimage
+
 
       # --- WEB ---
       - name: release-web
