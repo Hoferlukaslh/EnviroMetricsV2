@@ -1,0 +1,4 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "empreintes") (type "KiCad") (uri "${KIPRJMOD}/Librairies/empreintes.pretty") (options "") (descr ""))
+)
