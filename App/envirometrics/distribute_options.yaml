@@ -3,10 +3,10 @@ releases:
   - name: dev
     jobs:
       ## --- WINDOWS MSIX ---
-      - name: release-windows-msix
-        package:
-          platform: windows
-          target: msix
+      #- name: release-windows-msix
+      #  package:
+      #    platform: windows
+      #    target: msix
 
       ## --- WINDOWS EXE (Classique) ---
       - name: release-windows-exe
