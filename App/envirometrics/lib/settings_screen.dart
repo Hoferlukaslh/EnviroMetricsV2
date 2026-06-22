@@ -23,6 +23,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   RangeValues _humRange = const RangeValues(20, 80);
   RangeValues _co2Range = const RangeValues(350, 1500);
 
+  // Auto Scale Variables
+  bool _autoTemp = false;
+  bool _autoHum = false;
+  bool _autoCo2 = false;
+
   @override
   void initState() {
     super.initState();
@@ -30,10 +35,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _urlController.text = provider.apiUrl;
     _refreshRate = provider.refreshRate;
     _defaultAppId = provider.appId;
-    
+
     _tempRange = RangeValues(provider.tempMin, provider.tempMax);
     _humRange = RangeValues(provider.humMin, provider.humMax);
     _co2Range = RangeValues(provider.co2Min, provider.co2Max);
+
+    _autoTemp = provider.autoTemp;
+    _autoHum = provider.autoHum;
+    _autoCo2 = provider.autoCo2;
   }
 
   Future<void> _testConnection() async {
@@ -42,13 +51,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await ApiService().fetchMesures(1, 1, url: _urlController.text);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Succès !"), backgroundColor: Colors.green)
+          const SnackBar(
+            content: Text("Succès !"),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Échec !"), backgroundColor: Colors.red)
+          const SnackBar(content: Text("Échec !"), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -60,8 +72,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final provider = Provider.of<DashboardProvider>(context);
     final bool isHC = provider.isHighContrast;
-    final Color sectionTitleColor = isHC 
-        ? Colors.black 
+    final Color sectionTitleColor = isHC
+        ? Colors.black
         : (provider.isDarkMode ? Colors.tealAccent : const Color(0xFF004D40));
 
     final sliderTheme = SliderTheme.of(context).copyWith(
@@ -74,15 +86,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text("Accessibilité", 
-            style: TextStyle(color: sectionTitleColor, fontWeight: FontWeight.bold, fontSize: 18)),
+          Text(
+            "Accessibilité",
+            style: TextStyle(
+              color: sectionTitleColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
           const SizedBox(height: 15),
           const Text("Taille du texte"),
           SliderTheme(
             data: sliderTheme,
             child: Slider(
               value: provider.textScale,
-              min: 0.8, max: 2.0, divisions: 6,
+              min: 0.8,
+              max: 2.0,
+              divisions: 6,
               label: "x${provider.textScale.toStringAsFixed(1)}",
               onChanged: (v) => provider.setTextScale(v),
             ),
@@ -95,45 +115,132 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const Divider(height: 30),
 
-          Text("Limites des Graphiques (Min - Max)", 
-            style: TextStyle(color: sectionTitleColor, fontWeight: FontWeight.bold, fontSize: 18)),
+          Text(
+            "Limites des Graphiques",
+            style: TextStyle(
+              color: sectionTitleColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
           const SizedBox(height: 15),
-          
-          Text("Température : ${_tempRange.start.round()}°C - ${_tempRange.end.round()}°C"),
+
+          // --- TEMPÉRATURE ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Température : " +
+                    (_autoTemp
+                        ? "Automatique"
+                        : "${_tempRange.start.round()}°C - ${_tempRange.end.round()}°C"),
+              ),
+              Row(
+                children: [
+                  const Text("Auto", style: TextStyle(fontSize: 12)),
+                  Switch(
+                    value: _autoTemp,
+                    onChanged: (v) => setState(() => _autoTemp = v),
+                  ),
+                ],
+              ),
+            ],
+          ),
           RangeSlider(
             values: _tempRange,
-            min: -10, max: 50, divisions: 100,
-            labels: RangeLabels("${_tempRange.start.round()}", "${_tempRange.end.round()}"),
-            onChanged: (v) => setState(() => _tempRange = v),
+            min: -10,
+            max: 50,
+            divisions: 100,
+            labels: RangeLabels(
+              "${_tempRange.start.round()}",
+              "${_tempRange.end.round()}",
+            ),
+            onChanged: _autoTemp ? null : (v) => setState(() => _tempRange = v),
           ),
           const SizedBox(height: 10),
 
-          Text("Humidité : ${_humRange.start.round()}% - ${_humRange.end.round()}%"),
+          // --- HUMIDITÉ ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Humidité : " +
+                    (_autoHum
+                        ? "Automatique"
+                        : "${_humRange.start.round()}% - ${_humRange.end.round()}%"),
+              ),
+              Row(
+                children: [
+                  const Text("Auto", style: TextStyle(fontSize: 12)),
+                  Switch(
+                    value: _autoHum,
+                    onChanged: (v) => setState(() => _autoHum = v),
+                  ),
+                ],
+              ),
+            ],
+          ),
           RangeSlider(
             values: _humRange,
-            min: 0, max: 100, divisions: 100,
-            labels: RangeLabels("${_humRange.start.round()}", "${_humRange.end.round()}"),
-            onChanged: (v) => setState(() => _humRange = v),
+            min: 0,
+            max: 100,
+            divisions: 100,
+            labels: RangeLabels(
+              "${_humRange.start.round()}",
+              "${_humRange.end.round()}",
+            ),
+            onChanged: _autoHum ? null : (v) => setState(() => _humRange = v),
           ),
           const SizedBox(height: 10),
 
-          Text("CO2 : ${_co2Range.start.round()} ppm - ${_co2Range.end.round()} ppm"),
+          // --- CO2 ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "CO2 : " +
+                    (_autoCo2
+                        ? "Automatique"
+                        : "${_co2Range.start.round()} ppm - ${_co2Range.end.round()} ppm"),
+              ),
+              Row(
+                children: [
+                  const Text("Auto", style: TextStyle(fontSize: 12)),
+                  Switch(
+                    value: _autoCo2,
+                    onChanged: (v) => setState(() => _autoCo2 = v),
+                  ),
+                ],
+              ),
+            ],
+          ),
           RangeSlider(
             values: _co2Range,
-            min: 100, max: 2500, divisions: 500,
-            labels: RangeLabels("${_co2Range.start.round()}", "${_co2Range.end.round()}"),
-            onChanged: (v) => setState(() => _co2Range = v),
+            min: 100,
+            max: 2500,
+            divisions: 500,
+            labels: RangeLabels(
+              "${_co2Range.start.round()}",
+              "${_co2Range.end.round()}",
+            ),
+            onChanged: _autoCo2 ? null : (v) => setState(() => _co2Range = v),
           ),
 
           const Divider(height: 40),
 
-          Text("Configuration API", 
-            style: TextStyle(color: sectionTitleColor, fontWeight: FontWeight.bold, fontSize: 18)),
+          Text(
+            "Configuration API",
+            style: TextStyle(
+              color: sectionTitleColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
           const SizedBox(height: 10),
           TextField(
             controller: _urlController,
             decoration: const InputDecoration(
-              labelText: "URL API", 
+              labelText: "URL API",
               border: OutlineInputBorder(),
               isDense: true,
             ),
@@ -142,8 +249,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _isTesting ? null : _testConnection, 
-              child: const Text("TESTER LA CONNEXION")
+              onPressed: _isTesting ? null : _testConnection,
+              child: const Text("TESTER LA CONNEXION"),
             ),
           ),
 
@@ -154,7 +261,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             data: sliderTheme,
             child: Slider(
               value: _refreshRate.toDouble(),
-              min: 30, max: 600, divisions: 19,
+              min: 30,
+              max: 600,
+              divisions: 19,
               onChanged: (v) => setState(() => _refreshRate = v.toInt()),
             ),
           ),
@@ -168,9 +277,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             builder: (context, snapshot) {
               if (!snapshot.hasData) return const LinearProgressIndicator();
               _appareilsDisponibles = snapshot.data!;
-              
+
               if (!_appareilsDisponibles.any((a) => a.id == _defaultAppId)) {
-                if (_appareilsDisponibles.isNotEmpty) _defaultAppId = _appareilsDisponibles.first.id;
+                if (_appareilsDisponibles.isNotEmpty)
+                  _defaultAppId = _appareilsDisponibles.first.id;
               }
 
               return Container(
@@ -184,9 +294,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     value: _defaultAppId,
                     isExpanded: true,
                     onChanged: (v) => setState(() => _defaultAppId = v!),
-                    items: _appareilsDisponibles.map((app) => 
-                      DropdownMenuItem(value: app.id, child: Text(app.nom))
-                    ).toList(),
+                    items: _appareilsDisponibles
+                        .map(
+                          (app) => DropdownMenuItem(
+                            value: app.id,
+                            child: Text(app.nom),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ),
               );
@@ -195,11 +310,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const Divider(height: 40),
 
-          if (!isHC) SwitchListTile(
-            title: const Text("Mode Sombre"),
-            value: provider.isDarkMode,
-            onChanged: (v) => provider.setDarkMode(v),
-          ),
+          if (!isHC)
+            SwitchListTile(
+              title: const Text("Mode Sombre"),
+              value: provider.isDarkMode,
+              onChanged: (v) => provider.setDarkMode(v),
+            ),
 
           const SizedBox(height: 40),
 
@@ -209,32 +325,44 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: isHC ? Colors.black : const Color(0xFF004D40),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: () {
                 final selectedApp = _appareilsDisponibles.firstWhere(
                   (a) => a.id == _defaultAppId,
-                  orElse: () => Appareil(id: _defaultAppId, nom: provider.appName),
+                  orElse: () =>
+                      Appareil(id: _defaultAppId, nom: provider.appName),
                 );
 
-                // Sauvegarder les limites des graphiques
+                // Sauvegarder les limites des graphiques et les états auto
                 provider.updateChartBounds(
-                  _tempRange.start, _tempRange.end, 
-                  _humRange.start, _humRange.end, 
-                  _co2Range.start, _co2Range.end
+                  _tempRange.start,
+                  _tempRange.end,
+                  _autoTemp,
+                  _humRange.start,
+                  _humRange.end,
+                  _autoHum,
+                  _co2Range.start,
+                  _co2Range.end,
+                  _autoCo2,
                 );
 
                 // Sauvegarder les paramètres généraux
                 provider.updateSettings(
-                  _urlController.text, 
-                  _refreshRate, 
-                  _defaultAppId, 
-                  selectedApp.nom
+                  _urlController.text,
+                  _refreshRate,
+                  _defaultAppId,
+                  selectedApp.nom,
                 );
 
                 Navigator.pop(context);
               },
-              child: const Text("SAUVEGARDER", style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                "SAUVEGARDER",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
         ],

@@ -34,15 +34,15 @@ def get_db_connection():
 # Ancienne URL pour la rétrocompatibilité des ESP32
 @app.get("/SendDB.php", include_in_schema=False)
 def send_mesure(
-    temperature: float = Query(...), 
-    humidite: float = Query(...), 
-    co2: int = Query(...), 
+    temperature: float = Query(...),
+    humidite: float = Query(...),
+    co2: int = Query(...),
     app_id: int = Query(...)
 ):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            sql = """INSERT INTO Mesures (timestemp, temperature, humidite, co2, NO) 
+            sql = """INSERT INTO Mesures (timestemp, temperature, humidite, co2, NO)
                      VALUES (NOW(), %s, %s, %s, %s)"""
             cursor.execute(sql, (temperature, humidite, co2, app_id))
         conn.commit()
@@ -63,35 +63,37 @@ def get_appareils():
 
 # LECTURE DES MESURES
 @app.get("/mesures")
-def get_mesures(app_id: Optional[int] = None, days: int = 1, limit: int = 10000):
+def get_mesures(app_id: Optional[int] = None, days: float = 1.0, limit: int = 10000): # CHANGÉ EN FLOAT
     limit = min(limit, 20000)
     conn = get_db_connection()
-    
+
     try:
         with conn.cursor() as cursor:
-            params = [days]
+            # Conversion des jours en secondes (0.25 jour = 21600 secondes) pour éviter les erreurs SQL sur les décimales
+            seconds = int(days * 86400)
+            params = [seconds]
 
             if days >= 30:
-                sql = """SELECT DATE(`timestemp`) AS timestemp, 
-                                ROUND(AVG(`temperature`), 2) AS temperature, 
-                                ROUND(AVG(`humidite`), 2) AS humidite, 
-                                ROUND(AVG(`co2`), 2) AS co2, 
-                                MAX(NO) AS app_id 
-                         FROM Mesures WHERE timestemp >= NOW() - INTERVAL %s DAY"""
+                sql = """SELECT DATE(`timestemp`) AS timestemp,
+                                ROUND(AVG(`temperature`), 2) AS temperature,
+                                ROUND(AVG(`humidite`), 2) AS humidite,
+                                ROUND(AVG(`co2`), 2) AS co2,
+                                MAX(NO) AS app_id
+                         FROM Mesures WHERE timestemp >= NOW() - INTERVAL %s SECOND"""
                 group_by = " GROUP BY DATE(`timestemp`) ORDER BY timestemp DESC LIMIT %s"
-            
+
             elif days >= 7:
-                sql = """SELECT DATE_FORMAT(`timestemp`, '%%Y-%%m-%%d %%H:00:00') AS timestemp, 
-                                ROUND(AVG(`temperature`), 2) AS temperature, 
-                                ROUND(AVG(`humidite`), 2) AS humidite, 
-                                ROUND(AVG(`co2`), 2) AS co2, 
-                                MAX(NO) AS app_id 
-                         FROM Mesures WHERE timestemp >= NOW() - INTERVAL %s DAY"""
+                sql = """SELECT DATE_FORMAT(`timestemp`, '%%Y-%%m-%%d %%H:00:00') AS timestemp,
+                                ROUND(AVG(`temperature`), 2) AS temperature,
+                                ROUND(AVG(`humidite`), 2) AS humidite,
+                                ROUND(AVG(`co2`), 2) AS co2,
+                                MAX(NO) AS app_id
+                         FROM Mesures WHERE timestemp >= NOW() - INTERVAL %s SECOND"""
                 group_by = " GROUP BY DATE_FORMAT(`timestemp`, '%%Y-%%m-%%d %%H:00:00') ORDER BY timestemp DESC LIMIT %s"
-            
+
             else:
-                sql = """SELECT timestemp, temperature, humidite, co2, NO AS app_id 
-                         FROM Mesures WHERE timestemp >= NOW() - INTERVAL %s DAY"""
+                sql = """SELECT timestemp, temperature, humidite, co2, NO AS app_id
+                         FROM Mesures WHERE timestemp >= NOW() - INTERVAL %s SECOND"""
                 group_by = " ORDER BY timestemp DESC LIMIT %s"
 
             if app_id is not None:
@@ -119,7 +121,7 @@ def get_mesures(app_id: Optional[int] = None, days: int = 1, limit: int = 10000)
 
 # RÉTROCOMPATIBILITÉ (Pour les anciennes versions de l'app avec API PHP)
 @app.get("/get_mesures.php", include_in_schema=False)
-def legacy_get_mesures(app_id: Optional[int] = None, days: int = 1, limit: int = 10000):
+def legacy_get_mesures(app_id: Optional[int] = None, days: float = 1.0, limit: int = 10000): # CHANGÉ EN FLOAT
     # On redirige silencieusement vers la nouvelle fonction interne
     return get_mesures(app_id=app_id, days=days, limit=limit)
 

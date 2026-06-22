@@ -15,7 +15,7 @@ class Mesure {
 
   factory Mesure.fromJson(Map<String, dynamic> json) {
     return Mesure(
-      timestamp: DateTime.parse(json['timestemp'].toString()), 
+      timestamp: DateTime.parse(json['timestemp'].toString()),
       temperature: double.parse(json['temperature'].toString()),
       humidite: double.parse(json['humidite'].toString()),
       co2: double.parse(json['co2'].toString()),

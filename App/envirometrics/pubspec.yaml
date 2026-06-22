@@ -1,7 +1,7 @@
 name: 'envirometrics'
 description: 'Application de monitoring environnemental IoT.'
 publish_to: 'none'
-version: 1.0.3
+version: 1.0.4
 
 environment:
   sdk: ^3.11.0
@@ -9,26 +9,26 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  # Pour effectuer les requêtes GET vers l'API [cite: 1, 6]
-  http: ^1.1.0
+  # Pour effectuer les requêtes GET 
+  http: ^1.6.0
   # Pour les graphiques de température, humidité et CO2 
-  fl_chart: ^0.70.0 
-  # Pour afficher des jauges modernes (comme sur ta capture)
-  syncfusion_flutter_gauges: ^28.1.33
-  # Pour gérer l'état (sélection du capteur et période)
-  provider: ^6.1.1
+  fl_chart: ^1.2.0 
+  # Pour afficher des jauges modernes
+  syncfusion_flutter_gauges: ^32.2.7
+  # Pour gérer l'état
+  provider: ^6.1.5
   # Pour formater les dates reçues de l'API 
-  intl: ^0.19.0
+  intl: ^0.20.2
 
-  shared_preferences: ^2.2.3
+  shared_preferences: ^2.5.5
   
-  wakelock_plus: ^1.1.4
+  wakelock_plus: ^1.6.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.14.4
   msix: ^3.16.13
 
 flutter_icons:
@@ -62,4 +62,4 @@ flutter:
 # windows:
 #   & "C:\Users\lukas\AppData\Local\Pub\Cache\bin\flutter_distributor.bat" release --name dev     
 # debian :      
-#   ~/.pub-cache/bin/flutter_distributor release --name dev
+#     
