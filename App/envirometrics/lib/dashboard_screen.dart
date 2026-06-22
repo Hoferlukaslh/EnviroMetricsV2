@@ -315,39 +315,30 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildCardContent(
-    String title,
-    String value,
-    List<Mesure> data,
-    double Function(Mesure) map,
-    Color color,
-    double min,
-    double max,
+Widget _buildCardContent(
+    String title, 
+    String value, 
+    List<Mesure> data, 
+    double Function(Mesure) map, 
+    Color color, 
+    double min, 
+    double max, 
     bool autoScale,
-    bool isWarning,
-    bool isDialog,
+    bool isWarning, 
+    bool isDialog
   ) {
     final provider = Provider.of<DashboardProvider>(context);
     final bool isDark = provider.isDarkMode;
     final bool isHC = provider.isHighContrast;
 
-    final Color textColor = isHC
-        ? Colors.black
-        : (isDark ? Colors.white : const Color(0xFF202124));
-    final Color axisTextColor = isHC
-        ? Colors.black
-        : (isDark ? Colors.white24 : Colors.black38);
-    final Color cardBg = isHC
-        ? Colors.white
-        : (isDark ? const Color(0xFF1A1A1A) : Colors.white);
-
+    final Color textColor = isHC ? Colors.black : (isDark ? Colors.white : const Color(0xFF202124));
+    final Color axisTextColor = isHC ? Colors.black : (isDark ? Colors.white24 : Colors.black38);
+    final Color cardBg = isHC ? Colors.white : (isDark ? const Color(0xFF1A1A1A) : Colors.white);
+    
     Color mainColor = isHC ? Colors.black : color;
-    String unit = title == "Température"
-        ? " °C"
-        : title == "Humidité"
-        ? " %"
-        : " ppm";
+    String unit = title == "Température" ? " °C" : title == "Humidité" ? " %" : " ppm";
 
+    // 1. CALCUL DE L'AUTO-SCALE VERTICAL
     double finalMin = min;
     double finalMax = max;
 
@@ -356,56 +347,45 @@ class _DashboardScreenState extends State<DashboardScreen>
       double dataMax = data.map(map).reduce((a, b) => a > b ? a : b);
 
       if (dataMin == dataMax) {
-        finalMin = dataMin - 1;
+        finalMin = dataMin - 1; 
         finalMax = dataMax + 1;
       } else {
-        double padding = (dataMax - dataMin) * 0.05; // Ajustement conservé à 5%
+        double padding = (dataMax - dataMin) * 0.05; 
         finalMin = dataMin - padding;
         finalMax = dataMax + padding;
       }
     }
 
+    double minTime = 0;
+    double maxTime = 1;
+    double timeInterval = 1;
+
+    if (data.isNotEmpty) {
+      minTime = data.first.timestamp.millisecondsSinceEpoch.toDouble();
+      maxTime = data.last.timestamp.millisecondsSinceEpoch.toDouble();
+      timeInterval = (maxTime - minTime) / 5; // Découpe le temps en 5 paliers parfaits
+      if (timeInterval <= 0) timeInterval = 1; // Sécurité
+    }
+
     return Container(
-      margin: isDialog
-          ? EdgeInsets.zero
-          : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      margin: isDialog ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       padding: const EdgeInsets.fromLTRB(12, 12, 16, 8),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(isHC ? 4 : 16),
         border: isHC ? Border.all(color: Colors.black, width: 2) : null,
-        boxShadow: (isDark || isHC)
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+        boxShadow: (isDark || isHC) ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: mainColor,
-                  fontSize: isDialog ? 20 : 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              Text(title, style: TextStyle(color: mainColor, fontSize: isDialog ? 20 : 16, fontWeight: FontWeight.bold)),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _BlinkingValue(
-                    value: value,
-                    isWarning: isWarning,
-                    color: textColor,
-                    isHC: isHC,
-                  ),
+                  _BlinkingValue(value: value, isWarning: isWarning, color: textColor, isHC: isHC),
                   if (isDialog) ...[
                     const SizedBox(width: 8),
                     IconButton(
@@ -423,47 +403,43 @@ class _DashboardScreenState extends State<DashboardScreen>
           Expanded(
             child: LineChart(
               LineChartData(
-                minY: finalMin,
-                maxY: finalMax,
+                minX: minTime, maxX: maxTime, // Le graphique est contraint sur le temps
+                minY: finalMin, maxY: finalMax,
                 clipData: const FlClipData.all(),
-
+                
                 lineTouchData: LineTouchData(
                   touchTooltipData: LineTouchTooltipData(
-                    getTooltipColor: (LineBarSpot touchedSpot) => isDark || isHC
-                        ? Colors.grey[800]!
-                        : Colors.blueGrey[700]!,
+                    getTooltipColor: (LineBarSpot touchedSpot) => isDark || isHC ? Colors.grey[800]! : Colors.blueGrey[700]!,
                     getTooltipItems: (List<LineBarSpot> touchedSpots) {
                       return touchedSpots.map((spot) {
-                        final int index = spot.x.toInt();
+                        //  spotIndex car X est un timestamp
+                        final int index = spot.spotIndex; 
                         if (index < 0 || index >= data.length) return null;
 
                         final DateTime date = data[index].timestamp;
-                        final String dateStr =
-                            "${date.day.toString().padLeft(2, '0')}/"
-                            "${date.month.toString().padLeft(2, '0')}/"
-                            "${date.year.toString().substring(2)} "
-                            "${date.hour.toString().padLeft(2, '0')}:"
-                            "${date.minute.toString().padLeft(2, '0')}";
-
+                        final String dateStr = "${date.day.toString().padLeft(2, '0')}/"
+                                               "${date.month.toString().padLeft(2, '0')}/"
+                                               "${date.year.toString().substring(2)} "
+                                               "${date.hour.toString().padLeft(2, '0')}:"
+                                               "${date.minute.toString().padLeft(2, '0')}";
+                        
                         final double realValue = map(data[index]);
                         final String valueStr = realValue.toStringAsFixed(1);
 
                         return LineTooltipItem(
                           '$valueStr$unit\n',
                           TextStyle(
-                            color: mainColor == Colors.black
-                                ? Colors.white
-                                : mainColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                            color: mainColor == Colors.black ? Colors.white : mainColor, 
+                            fontSize: 14, 
+                            fontWeight: FontWeight.bold
                           ),
                           children: [
                             TextSpan(
                               text: dateStr,
                               style: const TextStyle(
-                                color: Colors.white70,
+                                color: Colors.white70, 
                                 fontSize: 10,
-                                fontWeight: FontWeight.normal,
+                                fontWeight: FontWeight.normal
                               ),
                             ),
                           ],
@@ -472,84 +448,60 @@ class _DashboardScreenState extends State<DashboardScreen>
                     },
                   ),
                 ),
-
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  getDrawingHorizontalLine: (v) =>
-                      FlLine(color: textColor.withOpacity(isHC ? 0.2 : 0.05)),
-                ),
+                
+                gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (v) => FlLine(color: textColor.withOpacity(isHC ? 0.2 : 0.05))),
                 titlesData: FlTitlesData(
                   show: true,
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  
+                  // AXE HORIZONTAL (TEMPS RÉEL) 
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
                       reservedSize: 22,
-                      interval: (data.length / 5).clamp(1, double.infinity),
+                      interval: timeInterval,
                       getTitlesWidget: (value, meta) {
-                        int index = value.toInt();
-                        if (index >= 0 && index < data.length) {
-                          DateTime date = data[index].timestamp;
-                          // Affiche l'heure si la période sélectionnée est courte (inférieure ou égale à 2 jours)
-                          String text = provider.days <= 2
-                              ? "${date.hour}:${date.minute.toString().padLeft(2, '0')}"
-                              : "${date.day}/${date.month}";
-                          return Text(
-                            text,
-                            style: TextStyle(
-                              color: axisTextColor,
-                              fontSize: 10,
-                              fontWeight: isHC
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
+                        DateTime date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                        String text = provider.days <= 2 
+                            ? "${date.hour}:${date.minute.toString().padLeft(2, '0')}" 
+                            : "${date.day}/${date.month}";
+                            
+                        return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10, fontWeight: isHC ? FontWeight.bold : FontWeight.normal));
                       },
                     ),
                   ),
+                  
+                  //  AXE VERTICAL (VALEURS AVEC 1 DÉCIMALE)
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (v, m) => Text(
-                        v.toStringAsFixed(0),
-                        style: TextStyle(color: axisTextColor, fontSize: 10),
-                      ),
+                      showTitles: true, 
+                      reservedSize: 40, 
+                      getTitlesWidget: (value, meta) {
+                        String text = value.toStringAsFixed(1);
+                        // On cache la virgule si c'est un compte rond pour garder ça propre
+                        if (text.endsWith('.0')) {
+                          text = text.substring(0, text.length - 2);
+                        }
+                        return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10));
+                      }
                     ),
                   ),
                 ),
-                borderData: FlBorderData(
-                  show: isHC,
-                  border: Border.all(color: Colors.black, width: 1),
-                ),
+                borderData: FlBorderData(show: isHC, border: Border.all(color: Colors.black, width: 1)),
                 lineBarsData: [
                   LineChartBarData(
-                    spots: data
-                        .asMap()
-                        .entries
-                        .map(
-                          (e) => FlSpot(
-                            e.key.toDouble(),
-                            map(e.value).clamp(finalMin, finalMax),
-                          ),
-                        )
-                        .toList(),
+                    // TRI CHRONOLOGIQUE STRICT
+                    spots: data.map((e) => FlSpot(
+                      e.timestamp.millisecondsSinceEpoch.toDouble(), 
+                      map(e).clamp(finalMin, finalMax)
+                    )).toList()..sort((a, b) => a.x.compareTo(b.x)), 
+                    
                     isCurved: !isHC,
-                    color: mainColor,
-                    barWidth: isHC ? 2 : 3,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: !isHC,
-                      color: mainColor.withOpacity(0.08),
-                    ),
+                    preventCurveOverShooting: true,  
+                    
+                    color: mainColor, barWidth: isHC ? 2 : 3, dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(show: !isHC, color: mainColor.withOpacity(0.08)),
                   ),
                 ],
               ),
@@ -559,6 +511,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       ),
     );
   }
+
 
   Widget _buildDropdown(
     DashboardProvider provider,
