@@ -25,7 +25,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   bool _isFullscreen = false;
   Timer? _refreshTimer;
   int? _lastAppId;
-  double? _lastDays; // Changé en double
+  double? _lastDays; 
   String? _lastUrl;
   int? _lastRefreshRate;
   bool? _lastHighContrast;
@@ -139,7 +139,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       360.0: '360 J',
     };
 
-    //  Détection pour savoir si on est strictement sur une app Mobil
     final bool isMobile =
         !kIsWeb &&
         (defaultTargetPlatform == TargetPlatform.android ||
@@ -153,7 +152,87 @@ class _DashboardScreenState extends State<DashboardScreen>
       appBar: AppBar(
         title: Text(provider.appName),
         actions: [
-          // Le bouton n'apparaît que si isMobile est "true"
+          // NOUVEAU : INDICATEUR DE BATTERIE CLIQUABLE
+          ValueListenableBuilder<List<Mesure>?>(
+            valueListenable: _mesuresNotifier,
+            builder: (context, data, _) {
+              if (data == null || data.isEmpty) return const SizedBox.shrink();
+
+              // On cherche les mesures qui contiennent un niveau de batterie
+              final validVbatData = data.where((m) => m.vbat != null).toList();
+              if (validVbatData.isEmpty) return const SizedBox.shrink();
+
+              final lastVbat = validVbatData.last.vbat!;
+              final isWarning = lastVbat < 3.3; // Alerte rouge sous 3.3V
+
+              final iconColor = provider.isHighContrast ? Colors.black : Colors.white;
+
+              return GestureDetector(
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => Dialog(
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      insetPadding: const EdgeInsets.all(16),
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width,
+                        height: MediaQuery.of(context).size.height * 0.9,
+                        child: ValueListenableBuilder<List<Mesure>?>(
+                          valueListenable: _mesuresNotifier,
+                          builder: (context, dialogData, _) {
+                            if (dialogData == null || dialogData.isEmpty) return const SizedBox.shrink();
+                            
+                            final dValidVbatData = dialogData.where((m) => m.vbat != null).toList();
+                            if (dValidVbatData.isEmpty) return const SizedBox.shrink();
+
+                            final dLastVbat = dValidVbatData.last.vbat!;
+                            final dIsWarning = dLastVbat < 3.3;
+
+                            return _buildCardContent(
+                              "Batterie",
+                              "${dLastVbat.toStringAsFixed(2)} V",
+                              dValidVbatData,
+                              (m) => m.vbat!,
+                              Colors.amber, // Graphique en jaune
+                              provider.vbatMin,
+                              provider.vbatMax,
+                              provider.autoVbat,
+                              dIsWarning,
+                              true,
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  alignment: Alignment.center,
+                  child: Row(
+                    children: [
+                      Icon(
+                        lastVbat >= 4.0 ? Icons.battery_full :
+                        lastVbat >= 3.5 ? Icons.battery_5_bar :
+                        lastVbat >= 3.2 ? Icons.battery_3_bar : Icons.battery_alert,
+                        color: isWarning && !provider.isHighContrast ? Colors.redAccent : iconColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 6),
+                      _BlinkingValue(
+                        value: "${lastVbat.toStringAsFixed(2)}V",
+                        isWarning: isWarning,
+                        color: iconColor,
+                        isHC: provider.isHighContrast,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+
           if (isMobile)
             IconButton(
               icon: Icon(
@@ -240,6 +319,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   String _formatValue(String title, Mesure m) {
     if (title == "Température") return "${m.temperature} °C";
     if (title == "Humidité") return "${m.humidite} %";
+    if (title == "Batterie") return "${m.vbat?.toStringAsFixed(2)} V";
     return "${m.co2} ppm";
   }
 
@@ -315,203 +395,201 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-Widget _buildCardContent(
-    String title, 
-    String value, 
-    List<Mesure> data, 
-    double Function(Mesure) map, 
-    Color color, 
-    double min, 
-    double max, 
-    bool autoScale,
-    bool isWarning, 
-    bool isDialog
-  ) {
-    final provider = Provider.of<DashboardProvider>(context);
-    final bool isDark = provider.isDarkMode;
-    final bool isHC = provider.isHighContrast;
+  Widget _buildCardContent(
+      String title, 
+      String value, 
+      List<Mesure> data, 
+      double Function(Mesure) map, 
+      Color color, 
+      double min, 
+      double max, 
+      bool autoScale,
+      bool isWarning, 
+      bool isDialog
+    ) {
+      final provider = Provider.of<DashboardProvider>(context);
+      final bool isDark = provider.isDarkMode;
+      final bool isHC = provider.isHighContrast;
 
-    final Color textColor = isHC ? Colors.black : (isDark ? Colors.white : const Color(0xFF202124));
-    final Color axisTextColor = isHC ? Colors.black : (isDark ? Colors.white24 : Colors.black38);
-    final Color cardBg = isHC ? Colors.white : (isDark ? const Color(0xFF1A1A1A) : Colors.white);
-    
-    Color mainColor = isHC ? Colors.black : color;
-    String unit = title == "Température" ? " °C" : title == "Humidité" ? " %" : " ppm";
+      final Color textColor = isHC ? Colors.black : (isDark ? Colors.white : const Color(0xFF202124));
+      final Color axisTextColor = isHC ? Colors.black : (isDark ? Colors.white24 : Colors.black38);
+      final Color cardBg = isHC ? Colors.white : (isDark ? const Color(0xFF1A1A1A) : Colors.white);
+      
+      Color mainColor = isHC ? Colors.black : color;
+      String unit = title == "Température" ? " °C" : title == "Humidité" ? " %" : title == "Batterie" ? " V" : " ppm";
 
-    // 1. CALCUL DE L'AUTO-SCALE VERTICAL
-    double finalMin = min;
-    double finalMax = max;
+      // 1. CALCUL DE L'AUTO-SCALE VERTICAL
+      double finalMin = min;
+      double finalMax = max;
 
-    if (autoScale && data.isNotEmpty) {
-      double dataMin = data.map(map).reduce((a, b) => a < b ? a : b);
-      double dataMax = data.map(map).reduce((a, b) => a > b ? a : b);
+      if (autoScale && data.isNotEmpty) {
+        double dataMin = data.map(map).reduce((a, b) => a < b ? a : b);
+        double dataMax = data.map(map).reduce((a, b) => a > b ? a : b);
 
-      if (dataMin == dataMax) {
-        finalMin = dataMin - 1; 
-        finalMax = dataMax + 1;
-      } else {
-        double padding = (dataMax - dataMin) * 0.05; 
-        finalMin = dataMin - padding;
-        finalMax = dataMax + padding;
+        if (dataMin == dataMax) {
+          finalMin = dataMin - 1; 
+          finalMax = dataMax + 1;
+        } else {
+          double padding = (dataMax - dataMin) * 0.05; 
+          finalMin = dataMin - padding;
+          finalMax = dataMax + padding;
+        }
       }
-    }
 
-    double minTime = 0;
-    double maxTime = 1;
-    double timeInterval = 1;
+      double minTime = 0;
+      double maxTime = 1;
+      double timeInterval = 1;
 
-    if (data.isNotEmpty) {
-      minTime = data.first.timestamp.millisecondsSinceEpoch.toDouble();
-      maxTime = data.last.timestamp.millisecondsSinceEpoch.toDouble();
-      timeInterval = (maxTime - minTime) / 5; // Découpe le temps en 5 paliers parfaits
-      if (timeInterval <= 0) timeInterval = 1; // Sécurité
-    }
+      if (data.isNotEmpty) {
+        minTime = data.first.timestamp.millisecondsSinceEpoch.toDouble();
+        maxTime = data.last.timestamp.millisecondsSinceEpoch.toDouble();
+        timeInterval = (maxTime - minTime) / 5;
+        if (timeInterval <= 0) timeInterval = 1;
+      }
 
-    return Container(
-      margin: isDialog ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      padding: const EdgeInsets.fromLTRB(12, 12, 16, 8),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(isHC ? 4 : 16),
-        border: isHC ? Border.all(color: Colors.black, width: 2) : null,
-        boxShadow: (isDark || isHC) ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(title, style: TextStyle(color: mainColor, fontSize: isDialog ? 20 : 16, fontWeight: FontWeight.bold)),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _BlinkingValue(value: value, isWarning: isWarning, color: textColor, isHC: isHC),
-                  if (isDialog) ...[
-                    const SizedBox(width: 8),
-                    IconButton(
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      icon: Icon(Icons.close, color: textColor, size: 28),
-                      onPressed: () => Navigator.pop(context),
-                    ),
+      return Container(
+        margin: isDialog ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.fromLTRB(12, 12, 16, 8),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(isHC ? 4 : 16),
+          border: isHC ? Border.all(color: Colors.black, width: 2) : null,
+          boxShadow: (isDark || isHC) ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))],
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(title, style: TextStyle(color: mainColor, fontSize: isDialog ? 20 : 16, fontWeight: FontWeight.bold)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _BlinkingValue(value: value, isWarning: isWarning, color: textColor, isHC: isHC),
+                    if (isDialog) ...[
+                      const SizedBox(width: 8),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: Icon(Icons.close, color: textColor, size: 28),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: LineChart(
-              LineChartData(
-                minX: minTime, maxX: maxTime, // Le graphique est contraint sur le temps
-                minY: finalMin, maxY: finalMax,
-                clipData: const FlClipData.all(),
-                
-                lineTouchData: LineTouchData(
-                  touchTooltipData: LineTouchTooltipData(
-                    getTooltipColor: (LineBarSpot touchedSpot) => isDark || isHC ? Colors.grey[800]! : Colors.blueGrey[700]!,
-                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                      return touchedSpots.map((spot) {
-                        //  spotIndex car X est un timestamp
-                        final int index = spot.spotIndex; 
-                        if (index < 0 || index >= data.length) return null;
-
-                        final DateTime date = data[index].timestamp;
-                        final String dateStr = "${date.day.toString().padLeft(2, '0')}/"
-                                               "${date.month.toString().padLeft(2, '0')}/"
-                                               "${date.year.toString().substring(2)} "
-                                               "${date.hour.toString().padLeft(2, '0')}:"
-                                               "${date.minute.toString().padLeft(2, '0')}";
-                        
-                        final double realValue = map(data[index]);
-                        final String valueStr = realValue.toStringAsFixed(1);
-
-                        return LineTooltipItem(
-                          '$valueStr$unit\n',
-                          TextStyle(
-                            color: mainColor == Colors.black ? Colors.white : mainColor, 
-                            fontSize: 14, 
-                            fontWeight: FontWeight.bold
-                          ),
-                          children: [
-                            TextSpan(
-                              text: dateStr,
-                              style: const TextStyle(
-                                color: Colors.white70, 
-                                fontSize: 10,
-                                fontWeight: FontWeight.normal
-                              ),
-                            ),
-                          ],
-                        );
-                      }).toList();
-                    },
-                  ),
                 ),
-                
-                gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (v) => FlLine(color: textColor.withOpacity(isHC ? 0.2 : 0.05))),
-                titlesData: FlTitlesData(
-                  show: true,
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: LineChart(
+                LineChartData(
+                  minX: minTime, maxX: maxTime, // Le graphique est contraint sur le temps
+                  minY: finalMin, maxY: finalMax,
+                  clipData: const FlClipData.all(),
                   
-                  // AXE HORIZONTAL (TEMPS RÉEL) 
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 22,
-                      interval: timeInterval,
-                      getTitlesWidget: (value, meta) {
-                        DateTime date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
-                        String text = provider.days <= 2 
-                            ? "${date.hour}:${date.minute.toString().padLeft(2, '0')}" 
-                            : "${date.day}/${date.month}";
-                            
-                        return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10, fontWeight: isHC ? FontWeight.bold : FontWeight.normal));
+                  lineTouchData: LineTouchData(
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (LineBarSpot touchedSpot) => isDark || isHC ? Colors.grey[800]! : Colors.blueGrey[700]!,
+                      getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          //  spotIndex car X est un timestamp
+                          final int index = spot.spotIndex; 
+                          if (index < 0 || index >= data.length) return null;
+
+                          final DateTime date = data[index].timestamp;
+                          final String dateStr = "${date.day.toString().padLeft(2, '0')}/"
+                                                "${date.month.toString().padLeft(2, '0')}/"
+                                                "${date.year.toString().substring(2)} "
+                                                "${date.hour.toString().padLeft(2, '0')}:"
+                                                "${date.minute.toString().padLeft(2, '0')}";
+                          
+                          final double realValue = map(data[index]);
+                          final String valueStr = realValue.toStringAsFixed(2);
+
+                          return LineTooltipItem(
+                            '$valueStr$unit\n',
+                            TextStyle(
+                              color: mainColor == Colors.black ? Colors.white : mainColor, 
+                              fontSize: 14, 
+                              fontWeight: FontWeight.bold
+                            ),
+                            children: [
+                              TextSpan(
+                                text: dateStr,
+                                style: const TextStyle(
+                                  color: Colors.white70, 
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.normal
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList();
                       },
                     ),
                   ),
                   
-                  //  AXE VERTICAL (VALEURS AVEC 1 DÉCIMALE)
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true, 
-                      reservedSize: 40, 
-                      getTitlesWidget: (value, meta) {
-                        String text = value.toStringAsFixed(1);
-                        // On cache la virgule si c'est un compte rond pour garder ça propre
-                        if (text.endsWith('.0')) {
-                          text = text.substring(0, text.length - 2);
+                  gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (v) => FlLine(color: textColor.withOpacity(isHC ? 0.2 : 0.05))),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    
+                     // AXE HORIZONTAL (TEMPS RÉEL) 
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 22,
+                        interval: timeInterval,
+                        getTitlesWidget: (value, meta) {
+                          DateTime date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                          String text = provider.days <= 2 
+                              ? "${date.hour}:${date.minute.toString().padLeft(2, '0')}" 
+                              : "${date.day}/${date.month}";
+                              
+                          return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10, fontWeight: isHC ? FontWeight.bold : FontWeight.normal));
+                        },
+                      ),
+                    ),
+                    
+                    //  AXE VERTICAL (VALEURS AVEC 1 DÉCIMALE)
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true, 
+                        reservedSize: 40, 
+                        getTitlesWidget: (value, meta) {
+                          String text = value.toStringAsFixed(1);
+                          if (text.endsWith('.0')) {
+                            text = text.substring(0, text.length - 2);
+                          }
+                          return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10));
                         }
-                        return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10));
-                      }
+                      ),
                     ),
                   ),
+                  borderData: FlBorderData(show: isHC, border: Border.all(color: Colors.black, width: 1)),
+                  lineBarsData: [
+                    LineChartBarData(
+                      // TRI CHRONOLOGIQUE STRICT
+                      spots: data.map((e) => FlSpot(
+                        e.timestamp.millisecondsSinceEpoch.toDouble(), 
+                        map(e).clamp(finalMin, finalMax)
+                      )).toList()..sort((a, b) => a.x.compareTo(b.x)), 
+                      
+                      isCurved: !isHC,
+                      preventCurveOverShooting: true,  
+                      
+                      color: mainColor, barWidth: isHC ? 2 : 3, dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(show: !isHC, color: mainColor.withOpacity(0.08)),
+                    ),
+                  ],
                 ),
-                borderData: FlBorderData(show: isHC, border: Border.all(color: Colors.black, width: 1)),
-                lineBarsData: [
-                  LineChartBarData(
-                    // TRI CHRONOLOGIQUE STRICT
-                    spots: data.map((e) => FlSpot(
-                      e.timestamp.millisecondsSinceEpoch.toDouble(), 
-                      map(e).clamp(finalMin, finalMax)
-                    )).toList()..sort((a, b) => a.x.compareTo(b.x)), 
-                    
-                    isCurved: !isHC,
-                    preventCurveOverShooting: true,  
-                    
-                    color: mainColor, barWidth: isHC ? 2 : 3, dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(show: !isHC, color: mainColor.withOpacity(0.08)),
-                  ),
-                ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
+          ],
+        ),
+      );
+    }
 
   Widget _buildDropdown(
     DashboardProvider provider,

@@ -22,11 +22,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   RangeValues _tempRange = const RangeValues(15, 40);
   RangeValues _humRange = const RangeValues(20, 80);
   RangeValues _co2Range = const RangeValues(350, 1500);
+  RangeValues _vbatRange = const RangeValues(3.0, 4.5);
 
   // Auto Scale Variables
   bool _autoTemp = false;
   bool _autoHum = false;
   bool _autoCo2 = false;
+  bool _autoVbat = true;
 
   @override
   void initState() {
@@ -39,10 +41,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _tempRange = RangeValues(provider.tempMin, provider.tempMax);
     _humRange = RangeValues(provider.humMin, provider.humMax);
     _co2Range = RangeValues(provider.co2Min, provider.co2Max);
+    _vbatRange = RangeValues(provider.vbatMin, provider.vbatMax);
 
     _autoTemp = provider.autoTemp;
     _autoHum = provider.autoHum;
     _autoCo2 = provider.autoCo2;
+    _autoVbat = provider.autoVbat;
   }
 
   Future<void> _testConnection() async {
@@ -225,6 +229,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             onChanged: _autoCo2 ? null : (v) => setState(() => _co2Range = v),
           ),
+          const SizedBox(height: 10),
+
+          // --- BATTERIE ---
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Batterie : " +
+                    (_autoVbat
+                        ? "Automatique"
+                        : "${_vbatRange.start.toStringAsFixed(1)}V - ${_vbatRange.end.toStringAsFixed(1)}V"),
+              ),
+              Row(
+                children: [
+                  const Text("Auto", style: TextStyle(fontSize: 12)),
+                  Switch(
+                    value: _autoVbat,
+                    onChanged: (v) => setState(() => _autoVbat = v),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          RangeSlider(
+            values: _vbatRange,
+            min: 0,
+            max: 6,
+            divisions: 60,
+            labels: RangeLabels(
+              "${_vbatRange.start.toStringAsFixed(1)}",
+              "${_vbatRange.end.toStringAsFixed(1)}",
+            ),
+            onChanged: _autoVbat ? null : (v) => setState(() => _vbatRange = v),
+          ),
 
           const Divider(height: 40),
 
@@ -336,17 +374,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Appareil(id: _defaultAppId, nom: provider.appName),
                 );
 
-                // Sauvegarder les limites des graphiques et les états auto
+                // Sauvegarder les limites des graphiques et les états auto (vbat inclus)
                 provider.updateChartBounds(
-                  _tempRange.start,
-                  _tempRange.end,
-                  _autoTemp,
-                  _humRange.start,
-                  _humRange.end,
-                  _autoHum,
-                  _co2Range.start,
-                  _co2Range.end,
-                  _autoCo2,
+                  _tempRange.start, _tempRange.end, _autoTemp,
+                  _humRange.start, _humRange.end, _autoHum,
+                  _co2Range.start, _co2Range.end, _autoCo2,
+                  _vbatRange.start, _vbatRange.end, _autoVbat,
                 );
 
                 // Sauvegarder les paramètres généraux

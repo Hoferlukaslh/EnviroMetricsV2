@@ -53,11 +53,15 @@ class DashboardProvider with ChangeNotifier {
     _co2Min = prefs.getDouble('co2Min') ?? 350.0;
     _co2Max = prefs.getDouble('co2Max') ?? 1500.0;
     _autoCo2 = prefs.getBool('autoCo2') ?? false;
+
+    _vbatMin = prefs.getDouble('vbatMin') ?? 3.0;
+    _vbatMax = prefs.getDouble('vbatMax') ?? 4.5;
+    _autoVbat = prefs.getBool('autoVbat') ?? true; // Par défaut en auto
   }
 
   late int _appId;
   late String _appName;
-  late double _days; // Changé en double
+  late double _days; 
   late String _apiUrl;
   late int _refreshRate;
   late bool _isDarkMode;
@@ -76,9 +80,13 @@ class DashboardProvider with ChangeNotifier {
   late double _co2Max;
   late bool _autoCo2;
 
+  late double _vbatMin;
+  late double _vbatMax;
+  late bool _autoVbat;
+
   int get appId => _appId;
   String get appName => _appName;
-  double get days => _days; // Changé en double
+  double get days => _days; 
   String get apiUrl => _apiUrl;
   int get refreshRate => _refreshRate;
   bool get isDarkMode => _isDarkMode;
@@ -96,6 +104,10 @@ class DashboardProvider with ChangeNotifier {
   double get co2Min => _co2Min;
   double get co2Max => _co2Max;
   bool get autoCo2 => _autoCo2;
+
+  double get vbatMin => _vbatMin;
+  double get vbatMax => _vbatMax;
+  bool get autoVbat => _autoVbat;
 
   void setDarkMode(bool value) {
     _isDarkMode = value;
@@ -124,7 +136,6 @@ class DashboardProvider with ChangeNotifier {
   }
 
   void setDays(double days) {
-    // Changé en double
     _days = days;
     prefs.setDouble('days', days);
     notifyListeners();
@@ -143,15 +154,10 @@ class DashboardProvider with ChangeNotifier {
   }
 
   void updateChartBounds(
-    double tMin,
-    double tMax,
-    bool aTemp,
-    double hMin,
-    double hMax,
-    bool aHum,
-    double cMin,
-    double cMax,
-    bool aCo2,
+    double tMin, double tMax, bool aTemp,
+    double hMin, double hMax, bool aHum,
+    double cMin, double cMax, bool aCo2,
+    double vMin, double vMax, bool aVbat,
   ) {
     _tempMin = tMin;
     _tempMax = tMax;
@@ -165,6 +171,10 @@ class DashboardProvider with ChangeNotifier {
     _co2Max = cMax;
     _autoCo2 = aCo2;
 
+    _vbatMin = vMin;
+    _vbatMax = vMax;
+    _autoVbat = aVbat;
+
     prefs.setDouble('tempMin', tMin);
     prefs.setDouble('tempMax', tMax);
     prefs.setBool('autoTemp', aTemp);
@@ -176,6 +186,10 @@ class DashboardProvider with ChangeNotifier {
     prefs.setDouble('co2Min', cMin);
     prefs.setDouble('co2Max', cMax);
     prefs.setBool('autoCo2', aCo2);
+
+    prefs.setDouble('vbatMin', vMin);
+    prefs.setDouble('vbatMax', vMax);
+    prefs.setBool('autoVbat', aVbat);
 
     notifyListeners();
   }

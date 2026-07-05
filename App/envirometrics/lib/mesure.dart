@@ -4,6 +4,7 @@ class Mesure {
   final double humidite;
   final double co2;
   final int appId;
+  final double? vbat;
 
   Mesure({
     required this.timestamp,
@@ -11,6 +12,7 @@ class Mesure {
     required this.humidite,
     required this.co2,
     required this.appId,
+    this.vbat,
   });
 
   factory Mesure.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class Mesure {
       humidite: double.parse(json['humidite'].toString()),
       co2: double.parse(json['co2'].toString()),
       appId: int.parse(json['app_id'].toString()),
+      vbat: json['vbat'] != null ? double.tryParse(json['vbat'].toString()) : null,
     );
   }
 }
