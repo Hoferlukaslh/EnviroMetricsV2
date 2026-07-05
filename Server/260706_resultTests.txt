@@ -1,0 +1,119 @@
+(venv) [lukas@lukas-EndeavourOS ~/Bureau]$ python3 TestsAPI.py
+======================================================
+  🚀 DÉMARRAGE DU BENCHMARK API (GO vs PYTHON)
+======================================================
+
+
+[SINGLE USER] Test séquentiel de l'API GO (100 itérations)
+ -> 1. Liste Appareils: Moyenne 2.93 ms | Erreurs: 0/100
+ -> 2. Mesures (3 heures): Moyenne 13.19 ms | Erreurs: 0/100
+ -> 3. Mesures (6 heures): Moyenne 16.22 ms | Erreurs: 0/100
+ -> 4. Mesures (12 heures): Moyenne 24.85 ms | Erreurs: 0/100
+ -> 5. Mesures (2 jours): Moyenne 52.31 ms | Erreurs: 0/100
+ -> 6. Mesures (7 semaines): Moyenne 31.04 ms | Erreurs: 0/100
+ -> 7. Mesures (365 jours): Moyenne 33.05 ms | Erreurs: 0/100
+
+[SINGLE USER] Test séquentiel de l'API PYTHON (100 itérations)
+ -> 1. Liste Appareils: Moyenne 52.83 ms | Erreurs: 0/100
+ -> 2. Mesures (3 heures): Moyenne 61.39 ms | Erreurs: 0/100
+ -> 3. Mesures (6 heures): Moyenne 66.63 ms | Erreurs: 0/100
+ -> 4. Mesures (12 heures): Moyenne 73.61 ms | Erreurs: 0/100
+ -> 5. Mesures (2 jours): Moyenne 160.11 ms | Erreurs: 0/100
+ -> 6. Mesures (7 semaines): Moyenne 87.51 ms | Erreurs: 0/100
+ -> 7. Mesures (365 jours): Moyenne 84.87 ms | Erreurs: 0/100
+
+[MULTI USER] Test de charge de l'API GO (50 requêtes simultanées)
+ -> 1. Liste Appareils: Moyenne 23.81 ms | Pire temps: 43.49 ms | Erreurs: 0/50
+ -> 2. Mesures (3 heures): Moyenne 100.66 ms | Pire temps: 159.92 ms | Erreurs: 0/50
+ -> 3. Mesures (6 heures): Moyenne 177.03 ms | Pire temps: 367.31 ms | Erreurs: 0/50
+ -> 4. Mesures (12 heures): Moyenne 183.04 ms | Pire temps: 346.97 ms | Erreurs: 0/50
+ -> 5. Mesures (2 jours): Moyenne 1094.16 ms | Pire temps: 1416.65 ms | Erreurs: 0/50
+ -> 6. Mesures (7 semaines): Moyenne 288.71 ms | Pire temps: 409.99 ms | Erreurs: 0/50
+ -> 7. Mesures (365 jours): Moyenne 309.42 ms | Pire temps: 402.64 ms | Erreurs: 0/50
+
+[MULTI USER] Test de charge de l'API PYTHON (50 requêtes simultanées)
+ -> 1. Liste Appareils: Moyenne 472.90 ms | Pire temps: 647.52 ms | Erreurs: 0/50
+ -> 2. Mesures (3 heures): Moyenne 753.89 ms | Pire temps: 956.51 ms | Erreurs: 0/50
+ -> 3. Mesures (6 heures): Moyenne 663.90 ms | Pire temps: 970.07 ms | Erreurs: 0/50
+ -> 4. Mesures (12 heures): Moyenne 737.02 ms | Pire temps: 1129.38 ms | Erreurs: 0/50
+ -> 5. Mesures (2 jours): Moyenne 1901.40 ms | Pire temps: 2956.74 ms | Erreurs: 0/50
+ -> 6. Mesures (7 semaines): Moyenne 796.70 ms | Pire temps: 1014.41 ms | Erreurs: 0/50
+ -> 7. Mesures (365 jours): Moyenne 853.83 ms | Pire temps: 1098.93 ms | Erreurs: 0/50
+
+=========================================
+  🏆 COMPARAISON FINALE : MODE SINGLE USER
+=========================================
+
+1. Liste Appareils:
+ - Go     : 2.93 ms
+ - Python : 52.83 ms
+ 🟢 Go est 18.0x plus rapide
+
+2. Mesures (3 heures):
+ - Go     : 13.19 ms
+ - Python : 61.39 ms
+ 🟢 Go est 4.7x plus rapide
+
+3. Mesures (6 heures):
+ - Go     : 16.22 ms
+ - Python : 66.63 ms
+ 🟢 Go est 4.1x plus rapide
+
+4. Mesures (12 heures):
+ - Go     : 24.85 ms
+ - Python : 73.61 ms
+ 🟢 Go est 3.0x plus rapide
+
+5. Mesures (2 jours):
+ - Go     : 52.31 ms
+ - Python : 160.11 ms
+ 🟢 Go est 3.1x plus rapide
+
+6. Mesures (7 semaines):
+ - Go     : 31.04 ms
+ - Python : 87.51 ms
+ 🟢 Go est 2.8x plus rapide
+
+7. Mesures (365 jours):
+ - Go     : 33.05 ms
+ - Python : 84.87 ms
+ 🟢 Go est 2.6x plus rapide
+
+=========================================
+  🏆 COMPARAISON FINALE : MODE MULTI USER (1000 connexions)
+=========================================
+
+1. Liste Appareils:
+ - Go     : 23.81 ms
+ - Python : 472.90 ms
+ 🟢 Go est 19.9x plus rapide
+
+2. Mesures (3 heures):
+ - Go     : 100.66 ms
+ - Python : 753.89 ms
+ 🟢 Go est 7.5x plus rapide
+
+3. Mesures (6 heures):
+ - Go     : 177.03 ms
+ - Python : 663.90 ms
+ 🟢 Go est 3.8x plus rapide
+
+4. Mesures (12 heures):
+ - Go     : 183.04 ms
+ - Python : 737.02 ms
+ 🟢 Go est 4.0x plus rapide
+
+5. Mesures (2 jours):
+ - Go     : 1094.16 ms
+ - Python : 1901.40 ms
+ 🟢 Go est 1.7x plus rapide
+
+6. Mesures (7 semaines):
+ - Go     : 288.71 ms
+ - Python : 796.70 ms
+ 🟢 Go est 2.8x plus rapide
+
+7. Mesures (365 jours):
+ - Go     : 309.42 ms
+ - Python : 853.83 ms
+ 🟢 Go est 2.8x plus rapide

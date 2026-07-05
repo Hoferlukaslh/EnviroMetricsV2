@@ -11,7 +11,22 @@ services:
       DB_NAME: ${DB_NAME}
     depends_on:
       - db
-    networks:       
+    networks:
+      - iot_network
+
+  api-go:
+    build: ./api_go
+    container_name: api_fiber_go
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      TZ: Europe/Zurich
+    depends_on:
+      - db
+    networks:
       - iot_network
 
   db:
@@ -49,32 +64,16 @@ services:
       container_name: nginx_proxy
       restart: always
       ports:
-        - "8080:80" # Seul Nginx est exposé sur le réseau
+        - "8080:80"
       volumes:
-        - ./frontend_web:/usr/share/nginx/html # Vos fichiers Flutter
-        - ./nginx.conf:/etc/nginx/conf.d/default.conf # La configuration
+        - ./frontend_web:/usr/share/nginx/html
+        - ./nginx.conf:/etc/nginx/conf.d/default.conf
       depends_on:
         - api-python
+        - api-go # <-- Ajouté ici pour que Nginx attende Go aussi
       networks:
         - iot_network
 
 networks:
   iot_network:
     driver: bridge
-
-
-##### .env file exemple #####
-# --- CONFIGURATION MARIADB ---
-#DB_ROOT_PASSWORD=pass
-#DB_NAME=EnviroMetrics
-#DB_USER=admin
-#DB_PASSWORD=pass
-#
-## --- CONFIGURATION RÉSEAU & PORTS ---
-#PORT_PHPMYADMIN=1889
-#PORT_MQTT=1883
-#PORT_MQTT_WS=9001
-#
-## --- CHEMINS DES DONNÉES (Facultatif) ---
-#PATH_BDD=./BDD
-#PATH_MOSQUITTO=./mosquitto
