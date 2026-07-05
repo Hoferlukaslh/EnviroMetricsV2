@@ -18,14 +18,14 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen>
-    with SingleTickerProviderStateMixin {
+with SingleTickerProviderStateMixin {
   final ValueNotifier<List<Mesure>?> _mesuresNotifier = ValueNotifier(null);
   bool _isLoading = false;
   String? _error;
   bool _isFullscreen = false;
   Timer? _refreshTimer;
   int? _lastAppId;
-  double? _lastDays; 
+  double? _lastDays;
   String? _lastUrl;
   int? _lastRefreshRate;
   bool? _lastHighContrast;
@@ -42,11 +42,11 @@ class _DashboardScreenState extends State<DashboardScreen>
     final provider = Provider.of<DashboardProvider>(context);
 
     bool settingsChanged =
-        _lastAppId != provider.appId ||
-        _lastDays != provider.days ||
-        _lastUrl != provider.apiUrl ||
-        _lastRefreshRate != provider.refreshRate ||
-        _lastHighContrast != provider.isHighContrast;
+    _lastAppId != provider.appId ||
+    _lastDays != provider.days ||
+    _lastUrl != provider.apiUrl ||
+    _lastRefreshRate != provider.refreshRate ||
+    _lastHighContrast != provider.isHighContrast;
 
     if (settingsChanged) {
       _lastAppId = provider.appId;
@@ -140,121 +140,139 @@ class _DashboardScreenState extends State<DashboardScreen>
     };
 
     final bool isMobile =
-        !kIsWeb &&
-        (defaultTargetPlatform == TargetPlatform.android ||
-            defaultTargetPlatform == TargetPlatform.iOS);
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.android ||
+    defaultTargetPlatform == TargetPlatform.iOS);
 
     return Scaffold(
       backgroundColor: provider.isHighContrast
-          ? (_eInkToggle ? const Color(0xFFFEFEFE) : Colors.white)
-          : null,
+      ? (_eInkToggle ? const Color(0xFFFEFEFE) : Colors.white)
+      : null,
 
       appBar: AppBar(
-        title: Text(provider.appName),
-        actions: [
-          // NOUVEAU : INDICATEUR DE BATTERIE CLIQUABLE
-          ValueListenableBuilder<List<Mesure>?>(
-            valueListenable: _mesuresNotifier,
-            builder: (context, data, _) {
-              if (data == null || data.isEmpty) return const SizedBox.shrink();
+        centerTitle: false,
+        titleSpacing: 0, // Plus aucun espace perdu au début
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                provider.appName,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 16), // Police réduite (avant 18)
+              ),
+            ),
 
-              // On cherche les mesures qui contiennent un niveau de batterie
-              final validVbatData = data.where((m) => m.vbat != null).toList();
-              if (validVbatData.isEmpty) return const SizedBox.shrink();
+            // --- INDICATEUR DE BATTERIE ---
+            ValueListenableBuilder<List<Mesure>?>(
+              valueListenable: _mesuresNotifier,
+              builder: (context, data, _) {
+                if (data == null || data.isEmpty) return const SizedBox.shrink();
 
-              final lastVbat = validVbatData.last.vbat!;
-              final isWarning = lastVbat < 3.3; // Alerte rouge sous 3.3V
+                final validVbatData = data.where((m) => m.vbat != null).toList();
+                if (validVbatData.isEmpty) return const SizedBox.shrink();
 
-              final iconColor = provider.isHighContrast ? Colors.black : Colors.white;
+                final lastVbat = validVbatData.last.vbat!;
+                final isWarning = lastVbat < 3.3;
 
-              return GestureDetector(
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => Dialog(
-                      backgroundColor: Colors.transparent,
-                      elevation: 0,
-                      insetPadding: const EdgeInsets.all(16),
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width,
-                        height: MediaQuery.of(context).size.height * 0.9,
-                        child: ValueListenableBuilder<List<Mesure>?>(
-                          valueListenable: _mesuresNotifier,
-                          builder: (context, dialogData, _) {
-                            if (dialogData == null || dialogData.isEmpty) return const SizedBox.shrink();
-                            
-                            final dValidVbatData = dialogData.where((m) => m.vbat != null).toList();
-                            if (dValidVbatData.isEmpty) return const SizedBox.shrink();
+                final iconColor = provider.isHighContrast ? Colors.black : Colors.white;
 
-                            final dLastVbat = dValidVbatData.last.vbat!;
-                            final dIsWarning = dLastVbat < 3.3;
+                return GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => Dialog(
+                        backgroundColor: Colors.transparent,
+                        elevation: 0,
+                        insetPadding: const EdgeInsets.all(16),
+                        child: SizedBox(
+                          width: MediaQuery.of(context).size.width,
+                          height: MediaQuery.of(context).size.height * 0.9,
+                          child: ValueListenableBuilder<List<Mesure>?>(
+                            valueListenable: _mesuresNotifier,
+                            builder: (context, dialogData, _) {
+                              if (dialogData == null || dialogData.isEmpty) return const SizedBox.shrink();
 
-                            return _buildCardContent(
-                              "Batterie",
-                              "${dLastVbat.toStringAsFixed(2)} V",
-                              dValidVbatData,
-                              (m) => m.vbat!,
-                              Colors.amber, // Graphique en jaune
-                              provider.vbatMin,
-                              provider.vbatMax,
-                              provider.autoVbat,
-                              dIsWarning,
-                              true,
-                            );
-                          },
+                              final dValidVbatData = dialogData.where((m) => m.vbat != null).toList();
+                              if (dValidVbatData.isEmpty) return const SizedBox.shrink();
+
+                              final dLastVbat = dValidVbatData.last.vbat!;
+                              final dIsWarning = dLastVbat < 3.3;
+
+                              return _buildCardContent(
+                                "Batterie",
+                                "${dLastVbat.toStringAsFixed(2)} V",
+                                dValidVbatData,
+                                (m) => m.vbat!,
+                                Colors.amber,
+                                provider.vbatMin,
+                                provider.vbatMax,
+                                provider.autoVbat,
+                                dIsWarning,
+                                true,
+                              );
+                            },
+                          ),
                         ),
                       ),
+                    );
+                  },
+                  child: Container(
+                    color: Colors.transparent,
+                    padding: const EdgeInsets.only(right: 2, left: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          lastVbat >= 4.0 ? Icons.battery_full :
+                          lastVbat >= 3.5 ? Icons.battery_5_bar :
+                          lastVbat >= 3.2 ? Icons.battery_3_bar : Icons.battery_alert,
+                          color: isWarning && !provider.isHighContrast ? Colors.redAccent : iconColor,
+                          size: 16, // Icône réduite (avant 20)
+                        ),
+                        const SizedBox(width: 2),
+                        _BlinkingValue(
+                          value: "${lastVbat.toStringAsFixed(2)}V",
+                          isWarning: isWarning,
+                          color: iconColor,
+                          isHC: provider.isHighContrast,
+                          fontSize: 14.0, // Police réduite (avant 16)
+                        ),
+                      ],
                     ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  alignment: Alignment.center,
-                  child: Row(
-                    children: [
-                      Icon(
-                        lastVbat >= 4.0 ? Icons.battery_full :
-                        lastVbat >= 3.5 ? Icons.battery_5_bar :
-                        lastVbat >= 3.2 ? Icons.battery_3_bar : Icons.battery_alert,
-                        color: isWarning && !provider.isHighContrast ? Colors.redAccent : iconColor,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 6),
-                      _BlinkingValue(
-                        value: "${lastVbat.toStringAsFixed(2)}V",
-                        isWarning: isWarning,
-                        color: iconColor,
-                        isHC: provider.isHighContrast,
-                      ),
-                    ],
                   ),
-                ),
-              );
-            },
-          ),
-
+                );
+              },
+            ),
+          ],
+        ),
+        actions: [
           if (isMobile)
             IconButton(
               icon: Icon(
                 _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                size: 24,
               ),
               onPressed: _toggleFullscreen,
+              // Réduit le padding et les contraintes pour les rapprocher
+              padding: const EdgeInsets.symmetric(horizontal: 0),
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
             ),
 
-          IconButton(
-            icon: _isLoading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white70,
-                    ),
-                  )
-                : const Icon(Icons.refresh),
-            onPressed: _isLoading ? null : _loadData,
-          ),
-          _buildDropdown(provider, periods),
+            // Bouton Rafraîchir
+            IconButton(
+              icon: _isLoading
+              ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70),
+              )
+              : const Icon(Icons.refresh, size: 24),
+              onPressed: _isLoading ? null : _loadData,
+              // Réduit le padding et les contraintes pour les rapprocher
+              padding: const EdgeInsets.symmetric(horizontal: 0),
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+            ),
+            _buildDropdown(provider, periods),
         ],
       ),
       drawer: _buildDrawer(context, provider),
@@ -396,200 +414,195 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _buildCardContent(
-      String title, 
-      String value, 
-      List<Mesure> data, 
-      double Function(Mesure) map, 
-      Color color, 
-      double min, 
-      double max, 
-      bool autoScale,
-      bool isWarning, 
-      bool isDialog
-    ) {
-      final provider = Provider.of<DashboardProvider>(context);
-      final bool isDark = provider.isDarkMode;
-      final bool isHC = provider.isHighContrast;
+    String title,
+    String value,
+    List<Mesure> data,
+    double Function(Mesure) map,
+    Color color,
+    double min,
+    double max,
+    bool autoScale,
+    bool isWarning,
+    bool isDialog
+  ) {
+    final provider = Provider.of<DashboardProvider>(context);
+    final bool isDark = provider.isDarkMode;
+    final bool isHC = provider.isHighContrast;
 
-      final Color textColor = isHC ? Colors.black : (isDark ? Colors.white : const Color(0xFF202124));
-      final Color axisTextColor = isHC ? Colors.black : (isDark ? Colors.white24 : Colors.black38);
-      final Color cardBg = isHC ? Colors.white : (isDark ? const Color(0xFF1A1A1A) : Colors.white);
-      
-      Color mainColor = isHC ? Colors.black : color;
-      String unit = title == "Température" ? " °C" : title == "Humidité" ? " %" : title == "Batterie" ? " V" : " ppm";
+    final Color textColor = isHC ? Colors.black : (isDark ? Colors.white : const Color(0xFF202124));
+    final Color axisTextColor = isHC ? Colors.black : (isDark ? Colors.white24 : Colors.black38);
+    final Color cardBg = isHC ? Colors.white : (isDark ? const Color(0xFF1A1A1A) : Colors.white);
 
-      // 1. CALCUL DE L'AUTO-SCALE VERTICAL
-      double finalMin = min;
-      double finalMax = max;
+    Color mainColor = isHC ? Colors.black : color;
+    String unit = title == "Température" ? " °C" : title == "Humidité" ? " %" : title == "Batterie" ? " V" : " ppm";
 
-      if (autoScale && data.isNotEmpty) {
-        double dataMin = data.map(map).reduce((a, b) => a < b ? a : b);
-        double dataMax = data.map(map).reduce((a, b) => a > b ? a : b);
+    double finalMin = min;
+    double finalMax = max;
 
-        if (dataMin == dataMax) {
-          finalMin = dataMin - 1; 
-          finalMax = dataMax + 1;
-        } else {
-          double padding = (dataMax - dataMin) * 0.05; 
-          finalMin = dataMin - padding;
-          finalMax = dataMax + padding;
-        }
+    if (autoScale && data.isNotEmpty) {
+      double dataMin = data.map(map).reduce((a, b) => a < b ? a : b);
+      double dataMax = data.map(map).reduce((a, b) => a > b ? a : b);
+
+      if (dataMin == dataMax) {
+        finalMin = dataMin - 1;
+        finalMax = dataMax + 1;
+      } else {
+        double padding = (dataMax - dataMin) * 0.05;
+        finalMin = dataMin - padding;
+        finalMax = dataMax + padding;
       }
+    }
 
-      double minTime = 0;
-      double maxTime = 1;
-      double timeInterval = 1;
+    double minTime = 0;
+    double maxTime = 1;
+    double timeInterval = 1;
 
-      if (data.isNotEmpty) {
-        minTime = data.first.timestamp.millisecondsSinceEpoch.toDouble();
-        maxTime = data.last.timestamp.millisecondsSinceEpoch.toDouble();
-        timeInterval = (maxTime - minTime) / 5;
-        if (timeInterval <= 0) timeInterval = 1;
-      }
+    if (data.isNotEmpty) {
+      minTime = data.first.timestamp.millisecondsSinceEpoch.toDouble();
+      maxTime = data.last.timestamp.millisecondsSinceEpoch.toDouble();
+      timeInterval = (maxTime - minTime) / 5;
+      if (timeInterval <= 0) timeInterval = 1;
+    }
 
-      return Container(
-        margin: isDialog ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        padding: const EdgeInsets.fromLTRB(12, 12, 16, 8),
-        decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(isHC ? 4 : 16),
-          border: isHC ? Border.all(color: Colors.black, width: 2) : null,
-          boxShadow: (isDark || isHC) ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))],
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(title, style: TextStyle(color: mainColor, fontSize: isDialog ? 20 : 16, fontWeight: FontWeight.bold)),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _BlinkingValue(value: value, isWarning: isWarning, color: textColor, isHC: isHC),
-                    if (isDialog) ...[
-                      const SizedBox(width: 8),
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: Icon(Icons.close, color: textColor, size: 28),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
+    return Container(
+      margin: isDialog ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.fromLTRB(12, 12, 16, 8),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(isHC ? 4 : 16),
+        border: isHC ? Border.all(color: Colors.black, width: 2) : null,
+        boxShadow: (isDark || isHC) ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(title, style: TextStyle(color: mainColor, fontSize: isDialog ? 20 : 16, fontWeight: FontWeight.bold)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _BlinkingValue(value: value, isWarning: isWarning, color: textColor, isHC: isHC),
+                  if (isDialog) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(Icons.close, color: textColor, size: 28),
+                      onPressed: () => Navigator.pop(context),
+                    ),
                   ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: LineChart(
-                LineChartData(
-                  minX: minTime, maxX: maxTime, // Le graphique est contraint sur le temps
-                  minY: finalMin, maxY: finalMax,
-                  clipData: const FlClipData.all(),
-                  
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipColor: (LineBarSpot touchedSpot) => isDark || isHC ? Colors.grey[800]! : Colors.blueGrey[700]!,
-                      getTooltipItems: (List<LineBarSpot> touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          //  spotIndex car X est un timestamp
-                          final int index = spot.spotIndex; 
-                          if (index < 0 || index >= data.length) return null;
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: LineChart(
+              LineChartData(
+                minX: minTime, maxX: maxTime,
+                minY: finalMin, maxY: finalMax,
+                clipData: const FlClipData.all(),
 
-                          final DateTime date = data[index].timestamp;
-                          final String dateStr = "${date.day.toString().padLeft(2, '0')}/"
-                                                "${date.month.toString().padLeft(2, '0')}/"
-                                                "${date.year.toString().substring(2)} "
-                                                "${date.hour.toString().padLeft(2, '0')}:"
-                                                "${date.minute.toString().padLeft(2, '0')}";
-                          
-                          final double realValue = map(data[index]);
-                          final String valueStr = realValue.toStringAsFixed(2);
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (LineBarSpot touchedSpot) => isDark || isHC ? Colors.grey[800]! : Colors.blueGrey[700]!,
+                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        final int index = spot.spotIndex;
+                        if (index < 0 || index >= data.length) return null;
 
-                          return LineTooltipItem(
-                            '$valueStr$unit\n',
-                            TextStyle(
-                              color: mainColor == Colors.black ? Colors.white : mainColor, 
-                              fontSize: 14, 
-                              fontWeight: FontWeight.bold
-                            ),
-                            children: [
-                              TextSpan(
-                                text: dateStr,
-                                style: const TextStyle(
-                                  color: Colors.white70, 
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.normal
-                                ),
+                        final DateTime date = data[index].timestamp;
+                        final String dateStr = "${date.day.toString().padLeft(2, '0')}/"
+                        "${date.month.toString().padLeft(2, '0')}/"
+                        "${date.year.toString().substring(2)} "
+                        "${date.hour.toString().padLeft(2, '0')}:"
+                        "${date.minute.toString().padLeft(2, '0')}";
+
+                        final double realValue = map(data[index]);
+                        final String valueStr = realValue.toStringAsFixed(2);
+
+                        return LineTooltipItem(
+                          '$valueStr$unit\n',
+                          TextStyle(
+                            color: mainColor == Colors.black ? Colors.white : mainColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold
+                          ),
+                          children: [
+                            TextSpan(
+                              text: dateStr,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 10,
+                                fontWeight: FontWeight.normal
                               ),
-                            ],
-                          );
-                        }).toList();
+                            ),
+                          ],
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
+
+                gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (v) => FlLine(color: textColor.withOpacity(isHC ? 0.2 : 0.05))),
+                titlesData: FlTitlesData(
+                  show: true,
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 22,
+                      interval: timeInterval,
+                      getTitlesWidget: (value, meta) {
+                        DateTime date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                        String text = provider.days <= 2
+                        ? "${date.hour}:${date.minute.toString().padLeft(2, '0')}"
+                        : "${date.day}/${date.month}";
+
+                        return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10, fontWeight: isHC ? FontWeight.bold : FontWeight.normal));
                       },
                     ),
                   ),
-                  
-                  gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (v) => FlLine(color: textColor.withOpacity(isHC ? 0.2 : 0.05))),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    
-                     // AXE HORIZONTAL (TEMPS RÉEL) 
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 22,
-                        interval: timeInterval,
-                        getTitlesWidget: (value, meta) {
-                          DateTime date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
-                          String text = provider.days <= 2 
-                              ? "${date.hour}:${date.minute.toString().padLeft(2, '0')}" 
-                              : "${date.day}/${date.month}";
-                              
-                          return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10, fontWeight: isHC ? FontWeight.bold : FontWeight.normal));
-                        },
-                      ),
-                    ),
-                    
-                    //  AXE VERTICAL (VALEURS AVEC 1 DÉCIMALE)
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true, 
-                        reservedSize: 40, 
-                        getTitlesWidget: (value, meta) {
-                          String text = value.toStringAsFixed(1);
-                          if (text.endsWith('.0')) {
-                            text = text.substring(0, text.length - 2);
-                          }
-                          return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10));
+
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 40,
+                      getTitlesWidget: (value, meta) {
+                        String text = value.toStringAsFixed(1);
+                        if (text.endsWith('.0')) {
+                          text = text.substring(0, text.length - 2);
                         }
-                      ),
+                        return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10));
+                      }
                     ),
                   ),
-                  borderData: FlBorderData(show: isHC, border: Border.all(color: Colors.black, width: 1)),
-                  lineBarsData: [
-                    LineChartBarData(
-                      // TRI CHRONOLOGIQUE STRICT
-                      spots: data.map((e) => FlSpot(
-                        e.timestamp.millisecondsSinceEpoch.toDouble(), 
-                        map(e).clamp(finalMin, finalMax)
-                      )).toList()..sort((a, b) => a.x.compareTo(b.x)), 
-                      
-                      isCurved: !isHC,
-                      preventCurveOverShooting: true,  
-                      
-                      color: mainColor, barWidth: isHC ? 2 : 3, dotData: const FlDotData(show: false),
-                      belowBarData: BarAreaData(show: !isHC, color: mainColor.withOpacity(0.08)),
-                    ),
-                  ],
                 ),
+                borderData: FlBorderData(show: isHC, border: Border.all(color: Colors.black, width: 1)),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: data.map((e) => FlSpot(
+                      e.timestamp.millisecondsSinceEpoch.toDouble(),
+                      map(e).clamp(finalMin, finalMax)
+                    )).toList()..sort((a, b) => a.x.compareTo(b.x)),
+
+                    isCurved: !isHC,
+                    preventCurveOverShooting: true,
+
+                    color: mainColor, barWidth: isHC ? 2 : 3, dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(show: !isHC, color: mainColor.withOpacity(0.08)),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      );
-    }
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildDropdown(
     DashboardProvider provider,
@@ -598,11 +611,12 @@ class _DashboardScreenState extends State<DashboardScreen>
     final isHC = provider.isHighContrast;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      // Ultra compact : marges réduites drastiquement
+      margin: const EdgeInsets.only(left: 2, right: 4, top: 12, bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: isHC ? Colors.white : Colors.teal[700],
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12), // Rayon réduit pour l'espace
         border: isHC ? Border.all(color: Colors.black, width: 2) : null,
       ),
       child: DropdownButtonHideUnderline(
@@ -612,25 +626,25 @@ class _DashboardScreenState extends State<DashboardScreen>
           icon: Icon(
             Icons.keyboard_arrow_down,
             color: isHC ? Colors.black : Colors.white,
+            size: 18, // Flèche plus petite
           ),
-
           menuMaxHeight: 300,
-
           onChanged: (double? n) => n != null ? provider.setDays(n) : null,
           items: periods.entries
-              .map(
-                (e) => DropdownMenuItem<double>(
-                  value: e.key,
-                  child: Text(
-                    e.value,
-                    style: TextStyle(
-                      color: isHC ? Colors.black : Colors.white,
-                      fontWeight: isHC ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
+          .map(
+            (e) => DropdownMenuItem<double>(
+              value: e.key,
+              child: Text(
+                e.value,
+                style: TextStyle(
+                  color: isHC ? Colors.black : Colors.white,
+                  fontWeight: isHC ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 12, // Texte plus petit (ex: "24H")
                 ),
-              )
-              .toList(),
+              ),
+            ),
+          )
+          .toList(),
         ),
       ),
     );
@@ -643,8 +657,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           DrawerHeader(
             decoration: BoxDecoration(
               color: provider.isHighContrast
-                  ? Colors.black
-                  : const Color(0xFF004D40),
+              ? Colors.black
+              : const Color(0xFF004D40),
             ),
             child: const Center(
               child: Text(
@@ -670,8 +684,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                     return ListTile(
                       leading: Icon(
                         app.nom.toLowerCase().contains("chambre")
-                            ? Icons.bed
-                            : Icons.living,
+                        ? Icons.bed
+                        : Icons.living,
                       ),
                       title: Text(app.nom),
                       selected: provider.appId == app.id,
@@ -709,18 +723,21 @@ class _BlinkingValue extends StatefulWidget {
   final bool isWarning;
   final Color color;
   final bool isHC;
+  final double fontSize;
+
   const _BlinkingValue({
     required this.value,
     required this.isWarning,
     required this.color,
     required this.isHC,
+    this.fontSize = 20.0,
   });
   @override
   State<_BlinkingValue> createState() => _BlinkingValueState();
 }
 
 class _BlinkingValueState extends State<_BlinkingValue>
-    with SingleTickerProviderStateMixin {
+with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   @override
   void initState() {
@@ -758,11 +775,11 @@ class _BlinkingValueState extends State<_BlinkingValue>
         widget.value,
         style: TextStyle(
           color: (widget.isWarning && !widget.isHC) ? Colors.red : widget.color,
-          fontSize: 20,
+          fontSize: widget.fontSize,
           fontWeight: FontWeight.bold,
           decoration: (widget.isWarning && widget.isHC)
-              ? TextDecoration.underline
-              : null,
+          ? TextDecoration.underline
+          : null,
         ),
       ),
     );
