@@ -138,7 +138,7 @@ PlasmoidItem {
 
     function fetchHistory() {
         var xhr = new XMLHttpRequest();
-        xhr.open("GET", "https://env.kreativcam.ch/api/mesures?app_id=2&days=1&limit=500", true);
+        xhr.open("GET", "https://env.kreativcam.ch/api/mesures?app_id=2&days=1", true);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
                 try {

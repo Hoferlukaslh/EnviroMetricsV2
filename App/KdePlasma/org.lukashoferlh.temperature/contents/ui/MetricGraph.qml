@@ -17,7 +17,7 @@ Item {
     property real leftMargin: 26
 
     Layout.fillWidth: true
-    Layout.preferredHeight: Kirigami.Units.gridUnit * 6
+    Layout.preferredHeight: Kirigami.Units.gridUnit * 7
 
     PlasmaComponents.Label {
         id: titleLabel
@@ -64,8 +64,9 @@ Item {
             }
 
             var m = root.leftMargin;
+            var bottomAxis = 14;
             var w = width - m - 4;
-            var h = height - 8;
+            var h = height - 4 - bottomAxis;
             var top = 4;
 
             var values = data.map(function(d) { return d.value; });
@@ -78,7 +79,7 @@ Item {
             function xAt(i) { return m + w * (i / (values.length - 1)); }
             function yAt(v) { return top + h - h * ((v - minV) / (maxV - minV)); }
 
-            // grille horizontale + labels
+            // grille horizontale + labels de l'axe des ordonnées (Y)
             ctx.strokeStyle = Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15);
             ctx.fillStyle = Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.6);
             ctx.font = "9px sans-serif";
@@ -92,6 +93,33 @@ Item {
                 var val = maxV - (maxV - minV) * (g / 2);
                 ctx.fillText(val.toFixed(root.decimals), 0, gy + 3);
             }
+
+            // axe des ordonnées (ligne verticale à gauche)
+            ctx.strokeStyle = Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.4);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(m, top);
+            ctx.lineTo(m, top + h);
+            ctx.stroke();
+
+            // axe des abscisses (ligne horizontale en bas) + heures
+            ctx.beginPath();
+            ctx.moveTo(m, top + h);
+            ctx.lineTo(m + w, top + h);
+            ctx.stroke();
+
+            ctx.fillStyle = Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.6);
+            ctx.font = "9px sans-serif";
+            var firstTs = data[0].timestemp;
+            var midTs = data[Math.floor((data.length - 1) / 2)].timestemp;
+            var lastTs = data[data.length - 1].timestemp;
+            ctx.textAlign = "left";
+            ctx.fillText(firstTs ? firstTs.substring(11, 16) : "", m, top + h + 11);
+            ctx.textAlign = "center";
+            ctx.fillText(midTs ? midTs.substring(11, 16) : "", m + w / 2, top + h + 11);
+            ctx.textAlign = "right";
+            ctx.fillText(lastTs ? lastTs.substring(11, 16) : "", m + w, top + h + 11);
+            ctx.textAlign = "left";
 
             // courbe
             ctx.strokeStyle = root.lineColor;
