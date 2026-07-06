@@ -1,0 +1,10 @@
+# Supprimer l'installation existante (essaie ces deux, l'un des deux marchera)
+kpackagetool6 --type Plasma/Applet -r org.lukashoferlh.temperature
+# ou si ça ne marche pas :
+rm -rf ~/.local/share/plasma/plasmoids/org.lukashoferlh.temperature
+
+# Réinstaller depuis ton dossier source
+kpackagetool6 --type Plasma/Applet -i ~/org.lukashoferlh.temperature
+
+# Relancer plasmashell
+killall plasmashell && kstart plasmashell
