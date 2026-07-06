@@ -1,0 +1,17 @@
+{
+    "KPlugin": {
+        "Id": "org.lukashoferlh.temperature",
+        "Name": "Température Pièce",
+        "Description": "Affiche la température via une API",
+        "Icon": "weather-clear",
+        "Authors": [
+            { "Name": "Lukas Hofer" }
+        ],
+        "Category": "Environment",
+        "Enabled": true,
+        "License": "GPL-3.0"
+    },
+    "X-Plasma-API": "declarativescriptqml",
+    "X-Plasma-MainScript": "ui/main.qml",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}
