@@ -1,0 +1,13 @@
+# Supprimer une éventuelle installation existante (essaie les deux, l'une des deux marchera)
+kpackagetool6 --type Plasma/Applet -r org.lukashoferlh.meteosuisse
+# ou si ça ne marche pas :
+rm -rf ~/.local/share/plasma/plasmoids/org.lukashoferlh.meteosuisse
+
+# Installer depuis ton dossier source
+kpackagetool6 --type Plasma/Applet -i ~/org.lukashoferlh.meteosuisse
+
+# Pour mettre à jour après une modification (au lieu de -i, utilise -u) :
+# kpackagetool6 --type Plasma/Applet -u ~/org.lukashoferlh.meteosuisse
+
+# Relancer plasmashell
+killall plasmashell && kstart plasmashell
