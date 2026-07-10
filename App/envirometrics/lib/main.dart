@@ -3,10 +3,17 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dashboard_screen.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'notification_service.dart';
+import 'background_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+
+  await NotificationService().init();
+  
+  // NOUVEAU : On lance le service d'arrière-plan
+  await initializeBackgroundService();
 
   WakelockPlus.enable();
 
@@ -25,7 +32,6 @@ class DashboardProvider with ChangeNotifier {
     _appId = prefs.getInt('appId') ?? 1;
     _appName = prefs.getString('appName') ?? "Salon";
 
-    // Migration sécurisée de int vers double pour la durée
     final savedDays = prefs.get('days');
     if (savedDays is int) {
       _days = savedDays.toDouble();
@@ -41,7 +47,9 @@ class DashboardProvider with ChangeNotifier {
     _textScale = prefs.getDouble('textScale') ?? 1.0;
     _isHighContrast = prefs.getBool('isHighContrast') ?? false;
 
-    // Limites des graphiques
+    _meteoStationId = prefs.getString('meteoStationId') ?? 'DEM';
+    _meteoPlz = prefs.getString('meteoPlz') ?? '280000';
+
     _tempMin = prefs.getDouble('tempMin') ?? 15.0;
     _tempMax = prefs.getDouble('tempMax') ?? 40.0;
     _autoTemp = prefs.getBool('autoTemp') ?? false;
@@ -56,7 +64,7 @@ class DashboardProvider with ChangeNotifier {
 
     _vbatMin = prefs.getDouble('vbatMin') ?? 3.0;
     _vbatMax = prefs.getDouble('vbatMax') ?? 4.5;
-    _autoVbat = prefs.getBool('autoVbat') ?? true; // Par défaut en auto
+    _autoVbat = prefs.getBool('autoVbat') ?? true;
   }
 
   late int _appId;
@@ -67,6 +75,9 @@ class DashboardProvider with ChangeNotifier {
   late bool _isDarkMode;
   late double _textScale;
   late bool _isHighContrast;
+  
+  late String _meteoStationId;
+  late String _meteoPlz;
 
   late double _tempMin;
   late double _tempMax;
@@ -92,6 +103,9 @@ class DashboardProvider with ChangeNotifier {
   bool get isDarkMode => _isDarkMode;
   double get textScale => _textScale;
   bool get isHighContrast => _isHighContrast;
+  
+  String get meteoStationId => _meteoStationId;
+  String get meteoPlz => _meteoPlz;
 
   double get tempMin => _tempMin;
   double get tempMax => _tempMax;
@@ -108,6 +122,22 @@ class DashboardProvider with ChangeNotifier {
   double get vbatMin => _vbatMin;
   double get vbatMax => _vbatMax;
   bool get autoVbat => _autoVbat;
+
+  // --- NOUVEAU : Méthodes pour les alertes (Spécifiques par Capteur ID) ---
+  bool getNotifyCo2(int id) => prefs.getBool('notifyCo2_$id') ?? false;
+  double getCo2Threshold(int id) => prefs.getDouble('co2Threshold_$id') ?? 900.0;
+  
+  bool getNotifyTemp(int id) => prefs.getBool('notifyTemp_$id') ?? false;
+  double getTempDiff(int id) => prefs.getDouble('tempDiff_$id') ?? 1.0;
+
+  void saveAlertSettings(int id, bool nCo2, double thCo2, bool nTemp, double diffTemp) {
+    prefs.setBool('notifyCo2_$id', nCo2);
+    prefs.setDouble('co2Threshold_$id', thCo2);
+    prefs.setBool('notifyTemp_$id', nTemp);
+    prefs.setDouble('tempDiff_$id', diffTemp);
+    notifyListeners();
+  }
+  // ------------------------------------------------------------------------
 
   void setDarkMode(bool value) {
     _isDarkMode = value;
@@ -141,15 +171,21 @@ class DashboardProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void updateSettings(String url, int rate, int defaultId, String defaultName) {
+  void updateSettings(String url, int rate, int defaultId, String defaultName, String mStation, String mPlz) {
     _apiUrl = url;
     _refreshRate = rate;
     _appId = defaultId;
     _appName = defaultName;
+    _meteoStationId = mStation;
+    _meteoPlz = mPlz;
+
     prefs.setString('apiUrl', url);
     prefs.setInt('refreshRate', rate);
     prefs.setInt('appId', defaultId);
     prefs.setString('appName', defaultName);
+    prefs.setString('meteoStationId', mStation);
+    prefs.setString('meteoPlz', mPlz);
+    
     notifyListeners();
   }
 
@@ -162,15 +198,12 @@ class DashboardProvider with ChangeNotifier {
     _tempMin = tMin;
     _tempMax = tMax;
     _autoTemp = aTemp;
-
     _humMin = hMin;
     _humMax = hMax;
     _autoHum = aHum;
-
     _co2Min = cMin;
     _co2Max = cMax;
     _autoCo2 = aCo2;
-
     _vbatMin = vMin;
     _vbatMax = vMax;
     _autoVbat = aVbat;
@@ -178,15 +211,12 @@ class DashboardProvider with ChangeNotifier {
     prefs.setDouble('tempMin', tMin);
     prefs.setDouble('tempMax', tMax);
     prefs.setBool('autoTemp', aTemp);
-
     prefs.setDouble('humMin', hMin);
     prefs.setDouble('humMax', hMax);
     prefs.setBool('autoHum', aHum);
-
     prefs.setDouble('co2Min', cMin);
     prefs.setDouble('co2Max', cMax);
     prefs.setBool('autoCo2', aCo2);
-
     prefs.setDouble('vbatMin', vMin);
     prefs.setDouble('vbatMax', vMax);
     prefs.setBool('autoVbat', aVbat);

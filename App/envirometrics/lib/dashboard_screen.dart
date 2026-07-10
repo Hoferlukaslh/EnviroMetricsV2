@@ -9,6 +9,7 @@ import 'mesure.dart';
 import 'api_service.dart';
 import 'settings_screen.dart';
 import 'appareil.dart';
+import 'notification_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -24,12 +25,20 @@ with SingleTickerProviderStateMixin {
   String? _error;
   bool _isFullscreen = false;
   Timer? _refreshTimer;
+  
+  // Variables d'état
   int? _lastAppId;
   double? _lastDays;
   String? _lastUrl;
   int? _lastRefreshRate;
   bool? _lastHighContrast;
   bool _eInkToggle = false;
+
+  // Variables Anti-Spam Notifications
+  final Map<int, bool> _co2AlertSent = {};
+  final Map<int, bool> _tempAlertSent = {};
+  DateTime? _lastMeteoFetch;
+  double? _currentOutdoorTemp;
 
   @override
   void initState() {
@@ -82,6 +91,23 @@ with SingleTickerProviderStateMixin {
     });
   }
 
+  // --- Récupération de la température extérieure pour les alertes ---
+  Future<void> _fetchOutdoorTempIfNeeded(DashboardProvider provider) async {
+    // Inutile d'appeler MétéoSuisse si l'alerte n'est pas activée pour ce capteur
+    if (!provider.getNotifyTemp(provider.appId)) return;
+    
+    // Pour ne pas surcharger l'API, on ne rafraîchit la température extérieure que toutes les 15 mins
+    if (_lastMeteoFetch != null && DateTime.now().difference(_lastMeteoFetch!).inMinutes < 15) return;
+
+    try {
+      final meteo = await ApiService().fetchMeteoData(provider.meteoStationId, provider.meteoPlz);
+      _currentOutdoorTemp = meteo.currentTemp;
+      _lastMeteoFetch = DateTime.now();
+    } catch (e) {
+      // Ignorer silencieusement si la météo échoue
+    }
+  }
+
   Future<void> _loadData() async {
     final provider = Provider.of<DashboardProvider>(context, listen: false);
     if (!mounted) return;
@@ -92,12 +118,55 @@ with SingleTickerProviderStateMixin {
     });
 
     try {
+      // 1. Charger la météo en arrière-plan si l'alerte température est active
+      await _fetchOutdoorTempIfNeeded(provider);
+
+      // 2. Récupérer les données du capteur
       final newData = await ApiService().fetchMesures(
         provider.appId,
         provider.days,
         url: provider.apiUrl,
       );
 
+      // 3. Logique des alertes (Notifications)
+      if (newData.isNotEmpty) {
+        final lastMesure = newData.first; // La donnée la plus récente
+        final int cId = provider.appId;
+
+        // A. Alerte CO2
+        if (provider.getNotifyCo2(cId)) {
+          if (lastMesure.co2 > provider.getCo2Threshold(cId)) {
+            if (!(_co2AlertSent[cId] ?? false)) {
+              NotificationService().showNotification(
+                cId * 10 + 1, // ID unique par capteur
+                "Aération recommandée", 
+                "Le CO2 a atteint ${lastMesure.co2} ppm dans '${provider.appName}'."
+              );
+              _co2AlertSent[cId] = true;
+            }
+          } else {
+            _co2AlertSent[cId] = false; // Réinitialise si c'est redescendu sous le seuil
+          }
+        }
+
+        // B. Alerte Température Extérieure
+        if (provider.getNotifyTemp(cId) && _currentOutdoorTemp != null) {
+          if (_currentOutdoorTemp! <= (lastMesure.temperature - provider.getTempDiff(cId))) {
+            if (!(_tempAlertSent[cId] ?? false)) {
+              NotificationService().showNotification(
+                cId * 10 + 2, 
+                "Aération possible", 
+                "Il fait plus frais dehors (${_currentOutdoorTemp}°C) que dans '${provider.appName}' (${lastMesure.temperature}°C)."
+              );
+              _tempAlertSent[cId] = true;
+            }
+          } else {
+            _tempAlertSent[cId] = false;
+          }
+        }
+      }
+
+      // 4. Mettre à jour l'interface
       if (mounted) {
         _mesuresNotifier.value = newData.reversed.toList();
         setState(() {
@@ -151,18 +220,16 @@ with SingleTickerProviderStateMixin {
 
       appBar: AppBar(
         centerTitle: false,
-        titleSpacing: 0, // Plus aucun espace perdu au début
+        titleSpacing: 0,
         title: Row(
           children: [
             Expanded(
               child: Text(
                 provider.appName,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 16), // Police réduite (avant 18)
+                style: const TextStyle(fontSize: 16),
               ),
             ),
-
-            // --- INDICATEUR DE BATTERIE ---
             ValueListenableBuilder<List<Mesure>?>(
               valueListenable: _mesuresNotifier,
               builder: (context, data, _) {
@@ -227,7 +294,7 @@ with SingleTickerProviderStateMixin {
                           lastVbat >= 3.5 ? Icons.battery_5_bar :
                           lastVbat >= 3.2 ? Icons.battery_3_bar : Icons.battery_alert,
                           color: isWarning && !provider.isHighContrast ? Colors.redAccent : iconColor,
-                          size: 16, // Icône réduite (avant 20)
+                          size: 16,
                         ),
                         const SizedBox(width: 2),
                         _BlinkingValue(
@@ -235,7 +302,7 @@ with SingleTickerProviderStateMixin {
                           isWarning: isWarning,
                           color: iconColor,
                           isHC: provider.isHighContrast,
-                          fontSize: 14.0, // Police réduite (avant 16)
+                          fontSize: 14.0,
                         ),
                       ],
                     ),
@@ -253,12 +320,9 @@ with SingleTickerProviderStateMixin {
                 size: 24,
               ),
               onPressed: _toggleFullscreen,
-              // Réduit le padding et les contraintes pour les rapprocher
               padding: const EdgeInsets.symmetric(horizontal: 0),
               constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
             ),
-
-            // Bouton Rafraîchir
             IconButton(
               icon: _isLoading
               ? const SizedBox(
@@ -268,7 +332,6 @@ with SingleTickerProviderStateMixin {
               )
               : const Icon(Icons.refresh, size: 24),
               onPressed: _isLoading ? null : _loadData,
-              // Réduit le padding et les contraintes pour les rapprocher
               padding: const EdgeInsets.symmetric(horizontal: 0),
               constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
             ),
@@ -383,8 +446,9 @@ with SingleTickerProviderStateMixin {
                 child: ValueListenableBuilder<List<Mesure>?>(
                   valueListenable: _mesuresNotifier,
                   builder: (context, dialogData, _) {
-                    if (dialogData == null || dialogData.isEmpty)
+                    if (dialogData == null || dialogData.isEmpty) {
                       return const SizedBox.shrink();
+                    }
 
                     final dLast = dialogData.last;
                     final dIsWarning = checkWarning(dLast);
@@ -611,12 +675,11 @@ with SingleTickerProviderStateMixin {
     final isHC = provider.isHighContrast;
 
     return Container(
-      // Ultra compact : marges réduites drastiquement
       margin: const EdgeInsets.only(left: 2, right: 4, top: 12, bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: isHC ? Colors.white : Colors.teal[700],
-        borderRadius: BorderRadius.circular(12), // Rayon réduit pour l'espace
+        borderRadius: BorderRadius.circular(12),
         border: isHC ? Border.all(color: Colors.black, width: 2) : null,
       ),
       child: DropdownButtonHideUnderline(
@@ -626,7 +689,7 @@ with SingleTickerProviderStateMixin {
           icon: Icon(
             Icons.keyboard_arrow_down,
             color: isHC ? Colors.black : Colors.white,
-            size: 18, // Flèche plus petite
+            size: 18,
           ),
           menuMaxHeight: 300,
           onChanged: (double? n) => n != null ? provider.setDays(n) : null,
@@ -639,7 +702,7 @@ with SingleTickerProviderStateMixin {
                 style: TextStyle(
                   color: isHC ? Colors.black : Colors.white,
                   fontWeight: isHC ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 12, // Texte plus petit (ex: "24H")
+                  fontSize: 12,
                 ),
               ),
             ),
@@ -671,10 +734,12 @@ with SingleTickerProviderStateMixin {
             child: FutureBuilder<List<Appareil>>(
               future: ApiService().fetchAppareils(url: provider.apiUrl),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting)
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
-                if (snapshot.hasError || !snapshot.hasData)
+                }
+                if (snapshot.hasError || !snapshot.hasData) {
                   return const ListTile(title: Text("Erreur réseau"));
+                }
                 final appareils = snapshot.data!;
                 return ListView.builder(
                   padding: EdgeInsets.zero,
@@ -683,9 +748,12 @@ with SingleTickerProviderStateMixin {
                     final app = appareils[index];
                     return ListTile(
                       leading: Icon(
+                        // --- LOGIQUE DES ICÔNES DYNAMIQUES ---
                         app.nom.toLowerCase().contains("chambre")
-                        ? Icons.bed
-                        : Icons.living,
+                            ? Icons.bed
+                            : app.nom.toLowerCase().contains("corridor")
+                                ? Icons.door_back_door_outlined
+                                : Icons.living,
                       ),
                       title: Text(app.nom),
                       selected: provider.appId == app.id,
@@ -700,6 +768,17 @@ with SingleTickerProviderStateMixin {
             ),
           ),
           const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.cloud),
+            title: const Text('MétéoSuisse'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MeteoScreen()),
+              );
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.settings),
             title: const Text('Paramètres'),
@@ -781,6 +860,178 @@ with SingleTickerProviderStateMixin {
           ? TextDecoration.underline
           : null,
         ),
+      ),
+    );
+  }
+}
+
+class MeteoScreen extends StatefulWidget {
+  const MeteoScreen({super.key});
+
+  @override
+  State<MeteoScreen> createState() => _MeteoScreenState();
+}
+
+class _MeteoScreenState extends State<MeteoScreen> {
+  bool _isLoading = true;
+  String? _error;
+  MeteoData? _data;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMeteo();
+  }
+
+  Future<void> _loadMeteo() async {
+    final provider = Provider.of<DashboardProvider>(context, listen: false);
+    try {
+      final data = await ApiService().fetchMeteoData(provider.meteoStationId, provider.meteoPlz);
+      if (mounted) {
+        setState(() { 
+          _data = data; 
+          _isLoading = false; 
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() { 
+          _error = e.toString(); 
+          _isLoading = false; 
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = Provider.of<DashboardProvider>(context);
+    
+    return Scaffold(
+      backgroundColor: provider.isHighContrast ? Colors.white : null,
+      appBar: AppBar(title: const Text("MétéoSuisse")),
+      body: _isLoading 
+        ? const Center(child: CircularProgressIndicator())
+        : _error != null 
+          ? Center(child: Text(_error!))
+          : _data == null || _data!.graphData.isEmpty
+            ? const Center(child: Text("Aucune donnée disponible"))
+            : Column(
+                children: [
+                  Expanded(child: _buildMeteoCard(provider)),
+                ],
+              ),
+    );
+  }
+
+  Widget _buildMeteoCard(DashboardProvider provider) {
+    final bool isDark = provider.isDarkMode;
+    final bool isHC = provider.isHighContrast;
+
+    final Color textColor = isHC ? Colors.black : (isDark ? Colors.white : const Color(0xFF202124));
+    final Color axisTextColor = isHC ? Colors.black : (isDark ? Colors.white24 : Colors.black38);
+    final Color cardBg = isHC ? Colors.white : (isDark ? const Color(0xFF1A1A1A) : Colors.white);
+    final Color mainColor = isHC ? Colors.black : Colors.lightBlue;
+
+    final data = _data!.graphData;
+    
+    double dataMin = data.map((e) => e.temperature).reduce((a, b) => a < b ? a : b);
+    double dataMax = data.map((e) => e.temperature).reduce((a, b) => a > b ? a : b);
+    double padding = (dataMax - dataMin) * 0.1;
+    if (padding == 0) padding = 1.0;
+    double finalMin = dataMin - padding;
+    double finalMax = dataMax + padding;
+
+    double minTime = data.first.timestamp.millisecondsSinceEpoch.toDouble();
+    double maxTime = data.last.timestamp.millisecondsSinceEpoch.toDouble();
+    double timeInterval = (maxTime - minTime) / 6;
+    if (timeInterval <= 0) timeInterval = 1;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(12, 12, 16, 8),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(isHC ? 4 : 16),
+        border: isHC ? Border.all(color: Colors.black, width: 2) : null,
+        boxShadow: (isDark || isHC) ? [] : [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text("Prévisions 7J", style: TextStyle(color: mainColor, fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(
+                "${_data!.currentTemp} °C", 
+                style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold)
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: LineChart(
+              LineChartData(
+                minX: minTime, maxX: maxTime,
+                minY: finalMin, maxY: finalMax,
+                gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (v) => FlLine(color: textColor.withOpacity(isHC ? 0.2 : 0.05))),
+                titlesData: FlTitlesData(
+                  show: true,
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 22,
+                      interval: timeInterval,
+                      getTitlesWidget: (value, meta) {
+                        DateTime date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                        return Text("${date.day}/${date.month}", style: TextStyle(color: axisTextColor, fontSize: 10, fontWeight: isHC ? FontWeight.bold : FontWeight.normal));
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      getTitlesWidget: (value, meta) => Text("${value.toInt()}", style: TextStyle(color: axisTextColor, fontSize: 10)),
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: isHC, border: Border.all(color: Colors.black, width: 1)),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (LineBarSpot touchedSpot) => isDark || isHC ? Colors.grey[800]! : Colors.blueGrey[700]!,
+                    getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        final int index = spot.spotIndex;
+                        if (index < 0 || index >= data.length) return null;
+                        final DateTime date = data[index].timestamp;
+                        final String dateStr = "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:00";
+                        final double realValue = data[index].temperature;
+                        return LineTooltipItem(
+                          '${realValue.toStringAsFixed(1)} °C\n',
+                          TextStyle(color: mainColor == Colors.black ? Colors.white : mainColor, fontSize: 14, fontWeight: FontWeight.bold),
+                          children: [TextSpan(text: dateStr, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.normal))],
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: data.map((e) => FlSpot(e.timestamp.millisecondsSinceEpoch.toDouble(), e.temperature)).toList(),
+                    isCurved: !isHC,
+                    color: mainColor,
+                    barWidth: isHC ? 2 : 3,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(show: !isHC, color: mainColor.withOpacity(0.08)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
