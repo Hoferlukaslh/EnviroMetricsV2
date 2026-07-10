@@ -83,7 +83,7 @@ void onStart(ServiceInstance service) async {
       final mesures = await ApiService().fetchMesures(appId, 0.125, url: url);
       if (mesures.isEmpty) return;
       
-      final derniereMesure = mesures.last;
+      final derniereMesure = mesures.first;
 
       if (notifyCo2 && derniereMesure.co2 > co2Threshold) {
         NotificationService().showNotification(
@@ -110,7 +110,7 @@ void onStart(ServiceInstance service) async {
 
   await checkMetrics();
 
-  Timer.periodic(const Duration(minutes: 3), (timer) async {
+  Timer.periodic(const Duration(minutes: 1), (timer) async {
     await checkMetrics();
   });
 }
