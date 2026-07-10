@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'main.dart';
 import 'mesure.dart';
 import 'api_service.dart';
@@ -19,7 +20,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen>
-with SingleTickerProviderStateMixin {
+with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final ValueNotifier<List<Mesure>?> _mesuresNotifier = ValueNotifier(null);
   bool _isLoading = false;
   String? _error;
@@ -34,8 +35,8 @@ with SingleTickerProviderStateMixin {
   bool? _lastHighContrast;
   bool _eInkToggle = false;
 
-  // Variables Anti-Spam Notifications
-  final Map<int, bool> _co2AlertSent = {};
+  // Variables Anti-Spam pour l'interface utilisateur
+  final Map<int, bool> _co2AlertSent = {}; // <-- REMIS POUR L'UI
   final Map<int, bool> _tempAlertSent = {};
   DateTime? _lastMeteoFetch;
   double? _currentOutdoorTemp;
@@ -43,6 +44,22 @@ with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this); 
+    _setAppForegroundState(true); 
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _setAppForegroundState(true);
+    } else {
+      _setAppForegroundState(false);
+    }
+  }
+
+  Future<void> _setAppForegroundState(bool isForeground) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isAppInForeground', isForeground);
   }
 
   @override
@@ -91,12 +108,9 @@ with SingleTickerProviderStateMixin {
     });
   }
 
-  // --- Récupération de la température extérieure pour les alertes ---
   Future<void> _fetchOutdoorTempIfNeeded(DashboardProvider provider) async {
-    // Inutile d'appeler MétéoSuisse si l'alerte n'est pas activée pour ce capteur
     if (!provider.getNotifyTemp(provider.appId)) return;
     
-    // Pour ne pas surcharger l'API, on ne rafraîchit la température extérieure que toutes les 15 mins
     if (_lastMeteoFetch != null && DateTime.now().difference(_lastMeteoFetch!).inMinutes < 15) return;
 
     try {
@@ -104,7 +118,7 @@ with SingleTickerProviderStateMixin {
       _currentOutdoorTemp = meteo.currentTemp;
       _lastMeteoFetch = DateTime.now();
     } catch (e) {
-      // Ignorer silencieusement si la météo échoue
+      // Ignorer silencieusement
     }
   }
 
@@ -118,45 +132,60 @@ with SingleTickerProviderStateMixin {
     });
 
     try {
-      // 1. Charger la météo en arrière-plan si l'alerte température est active
       await _fetchOutdoorTempIfNeeded(provider);
 
-      // 2. Récupérer les données du capteur
       final newData = await ApiService().fetchMesures(
         provider.appId,
         provider.days,
         url: provider.apiUrl,
       );
 
-      // 3. Logique des alertes (Notifications)
       if (newData.isNotEmpty) {
-        final lastMesure = newData.first; // La donnée la plus récente
+        final lastMesure = newData.first; 
         final int cId = provider.appId;
 
-        // A. Alerte CO2
+        // A. Alerte CO2 : AVEC ANTI-SPAM (Seulement pour la bannière visuelle de l'app)
         if (provider.getNotifyCo2(cId)) {
           if (lastMesure.co2 > provider.getCo2Threshold(cId)) {
             if (!(_co2AlertSent[cId] ?? false)) {
-              NotificationService().showNotification(
-                cId * 10 + 1, // ID unique par capteur
-                "Aération recommandée", 
-                "Le CO2 a atteint ${lastMesure.co2} ppm dans '${provider.appName}'."
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text("Aération recommandée : CO2 à ${lastMesure.co2} ppm dans '${provider.appName}'.")),
+                    ],
+                  ),
+                  backgroundColor: Colors.orange.shade800, // Retour au orange
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 5),
+                ),
               );
               _co2AlertSent[cId] = true;
             }
           } else {
-            _co2AlertSent[cId] = false; // Réinitialise si c'est redescendu sous le seuil
+            _co2AlertSent[cId] = false; // Réinitialise l'anti-spam quand on passe sous le seuil
           }
         }
 
-        // B. Alerte Température Extérieure
+        // B. Alerte Température Extérieure (Avec Anti-Spam)
         if (provider.getNotifyTemp(cId) && _currentOutdoorTemp != null) {
           if (_currentOutdoorTemp! <= (lastMesure.temperature - provider.getTempDiff(cId))) {
             if (!(_tempAlertSent[cId] ?? false)) {
-              NotificationService().showNotification(
-                cId * 10 + 2, 
-                "Aération possible", 
-                "Il fait plus frais dehors (${_currentOutdoorTemp}°C) que dans '${provider.appName}' (${lastMesure.temperature}°C)."
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.ac_unit, color: Colors.white),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text("Aération possible : Il fait plus frais dehors (${_currentOutdoorTemp}°C).")),
+                    ],
+                  ),
+                  backgroundColor: Colors.blue.shade800,
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 5),
+                ),
               );
               _tempAlertSent[cId] = true;
             }
@@ -166,7 +195,6 @@ with SingleTickerProviderStateMixin {
         }
       }
 
-      // 4. Mettre à jour l'interface
       if (mounted) {
         _mesuresNotifier.value = newData.reversed.toList();
         setState(() {
@@ -186,6 +214,8 @@ with SingleTickerProviderStateMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this); 
+    _setAppForegroundState(false); 
     _refreshTimer?.cancel();
     _mesuresNotifier.dispose();
     super.dispose();
@@ -748,7 +778,6 @@ with SingleTickerProviderStateMixin {
                     final app = appareils[index];
                     return ListTile(
                       leading: Icon(
-                        // --- LOGIQUE DES ICÔNES DYNAMIQUES ---
                         app.nom.toLowerCase().contains("chambre")
                             ? Icons.bed
                             : app.nom.toLowerCase().contains("corridor")

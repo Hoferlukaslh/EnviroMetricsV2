@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart'; // NOUVEAU
 import 'main.dart';
 import 'api_service.dart';
 import 'appareil.dart';
@@ -204,12 +205,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _autoCo2 = false;
   bool _autoVbat = true;
 
-  // --- NOUVEAU : Variables pour les Alertes ---
+  // Variables pour les Alertes
   int _alertAppId = 1;
   bool _notifyCo2 = false;
   double _co2Threshold = 900.0;
   bool _notifyTemp = false;
   double _tempDiff = 1.0;
+  
+  int _bgInterval = 5; // NOUVEAU
 
   @override
   void initState() {
@@ -222,7 +225,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     
     _refreshRate = provider.refreshRate;
     _defaultAppId = provider.appId;
-    _alertAppId = provider.appId; // Par défaut, on modifie les alertes du capteur actuellement visible
+    _alertAppId = provider.appId; 
 
     _tempRange = RangeValues(provider.tempMin, provider.tempMax);
     _humRange = RangeValues(provider.humMin, provider.humMax);
@@ -233,12 +236,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _autoHum = provider.autoHum;
     _autoCo2 = provider.autoCo2;
     _autoVbat = provider.autoVbat;
+    
+    _bgInterval = provider.bgInterval; // NOUVEAU
 
-    _loadAlertSettings(_alertAppId); // Charge les alertes
+    _loadAlertSettings(_alertAppId);
     _loadCsvData();
   }
 
-  // --- Charge les paramètres d'alerte pour le capteur sélectionné ---
   void _loadAlertSettings(int id) {
     final provider = Provider.of<DashboardProvider>(context, listen: false);
     setState(() {
@@ -249,7 +253,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  // --- Sauvegarde les paramètres d'alerte pour le capteur en cours de modification ---
   void _saveCurrentAlertSettings() {
     final provider = Provider.of<DashboardProvider>(context, listen: false);
     provider.saveAlertSettings(_alertAppId, _notifyCo2, _co2Threshold, _notifyTemp, _tempDiff);
@@ -390,7 +393,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
 
           // ----------------------------------------------------
-          // SECTION NOUVELLE : ALERTES & AÉRATION
+          // SECTION 2 : ALERTES & AÉRATION
           // ----------------------------------------------------
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -417,7 +420,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           isExpanded: true,
                           onChanged: (v) {
                             if (v != null) {
-                              _saveCurrentAlertSettings(); // Sauvegarde les anciens réglages avant de changer
+                              _saveCurrentAlertSettings();
                               setState(() {
                                 _alertAppId = v;
                                 _loadAlertSettings(v);
@@ -479,6 +482,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ),
+
+                const Divider(indent: 16, endIndent: 16),
+                const SizedBox(height: 10),
+                
+                // --- NOUVEAU : Réglage du temps d'arrière-plan ---
+                Align(
+                  alignment: Alignment.centerLeft, 
+                  child: Text("Fréquence de scan (Arrière-plan) : $_bgInterval min", style: const TextStyle(fontWeight: FontWeight.bold))
+                ),
+                SliderTheme(
+                  data: sliderTheme,
+                  child: Slider(
+                    value: _bgInterval.toDouble(), 
+                    min: 1, 
+                    max: 15, 
+                    divisions: 14,
+                    label: "$_bgInterval min",
+                    onChanged: (v) => setState(() => _bgInterval = v.toInt()),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                
+                // --- NOUVEAU : Bouton Optimisation Batterie ---
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.battery_alert, color: Colors.orange),
+                    label: const Text("Désactiver l'optimisation batterie", textAlign: TextAlign.center),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isHC ? Colors.white : Colors.grey.shade800,
+                      foregroundColor: isHC ? Colors.black : Colors.white,
+                      side: isHC ? const BorderSide(color: Colors.black) : null,
+                    ),
+                    onPressed: () async {
+                      if (await Permission.ignoreBatteryOptimizations.isDenied) {
+                        await Permission.ignoreBatteryOptimizations.request();
+                      } else {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("L'optimisation est déjà désactivée !"), backgroundColor: Colors.green),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 15),
               ],
             ),
           ),
@@ -486,7 +536,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
 
           // ----------------------------------------------------
-          // SECTION 2 : LIMITES DES GRAPHIQUES
+          // SECTION 3 : LIMITES DES GRAPHIQUES
           // ----------------------------------------------------
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -581,7 +631,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
 
           // ----------------------------------------------------
-          // SECTION 3 : CONFIGURATION MÉTÉOSUISSE
+          // SECTION 4 : CONFIGURATION MÉTÉOSUISSE
           // ----------------------------------------------------
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -662,7 +712,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(),
 
           // ----------------------------------------------------
-          // SECTION 4 : CONFIGURATION SYSTÈME & API
+          // SECTION 5 : CONFIGURATION SYSTÈME & API
           // ----------------------------------------------------
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -688,7 +738,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text("Actualisation : $_refreshRate s"),
+                  child: Text("Actualisation UI : $_refreshRate s"),
                 ),
                 SliderTheme(
                   data: sliderTheme,
@@ -739,7 +789,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 40),
 
           // ----------------------------------------------------
-          // BOUTON SAUVEGARDER (Toujours visible)
+          // BOUTON SAUVEGARDER
           // ----------------------------------------------------
           SizedBox(
             height: 52,
@@ -750,7 +800,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () {
-                _saveCurrentAlertSettings(); // Sauvegarde le capteur en cours d'édition
+                _saveCurrentAlertSettings(); 
+                
+                // NOUVEAU : On sauvegarde la fréquence de background
+                provider.setBgInterval(_bgInterval);
 
                 final selectedApp = _appareilsDisponibles.firstWhere(
                   (a) => a.id == _defaultAppId,

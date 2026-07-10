@@ -65,6 +65,9 @@ class DashboardProvider with ChangeNotifier {
     _vbatMin = prefs.getDouble('vbatMin') ?? 3.0;
     _vbatMax = prefs.getDouble('vbatMax') ?? 4.5;
     _autoVbat = prefs.getBool('autoVbat') ?? true;
+
+    // NOUVEAU : Intervalle d'arrière-plan
+    _bgInterval = prefs.getInt('bgInterval') ?? 5;
   }
 
   late int _appId;
@@ -95,6 +98,8 @@ class DashboardProvider with ChangeNotifier {
   late double _vbatMax;
   late bool _autoVbat;
 
+  late int _bgInterval;
+
   int get appId => _appId;
   String get appName => _appName;
   double get days => _days; 
@@ -122,8 +127,10 @@ class DashboardProvider with ChangeNotifier {
   double get vbatMin => _vbatMin;
   double get vbatMax => _vbatMax;
   bool get autoVbat => _autoVbat;
+  
+  int get bgInterval => _bgInterval;
 
-  // --- NOUVEAU : Méthodes pour les alertes (Spécifiques par Capteur ID) ---
+  // Méthodes pour les alertes
   bool getNotifyCo2(int id) => prefs.getBool('notifyCo2_$id') ?? false;
   double getCo2Threshold(int id) => prefs.getDouble('co2Threshold_$id') ?? 900.0;
   
@@ -137,7 +144,12 @@ class DashboardProvider with ChangeNotifier {
     prefs.setDouble('tempDiff_$id', diffTemp);
     notifyListeners();
   }
-  // ------------------------------------------------------------------------
+
+  void setBgInterval(int interval) {
+    _bgInterval = interval;
+    prefs.setInt('bgInterval', interval);
+    notifyListeners();
+  }
 
   void setDarkMode(bool value) {
     _isDarkMode = value;

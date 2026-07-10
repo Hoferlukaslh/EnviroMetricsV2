@@ -83,7 +83,7 @@ void onStart(ServiceInstance service) async {
       final mesures = await ApiService().fetchMesures(appId, 0.125, url: url);
       if (mesures.isEmpty) return;
       
-      final derniereMesure = mesures.first;
+      final derniereMesure = mesures.first; // CORRECT: .first = la plus récente
 
       if (notifyCo2 && derniereMesure.co2 > co2Threshold) {
         NotificationService().showNotification(
@@ -108,9 +108,22 @@ void onStart(ServiceInstance service) async {
     }
   }
 
+  // 1. Exécution immédiate au démarrage
   await checkMetrics();
+  final initialPrefs = await SharedPreferences.getInstance();
+  await initialPrefs.setInt('lastBgRunEpoch', DateTime.now().millisecondsSinceEpoch);
 
+  // 2. Boucle de vérification (Tourne toutes les minutes en tâche de fond)
   Timer.periodic(const Duration(minutes: 1), (timer) async {
-    await checkMetrics();
+    final prefs = await SharedPreferences.getInstance();
+    final bgInterval = prefs.getInt('bgInterval') ?? 5; 
+    final lastRunEpoch = prefs.getInt('lastBgRunEpoch') ?? 0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    // Si le temps écoulé correspond à l'intervalle demandé (avec 10s de tolérance)
+    if (now - lastRunEpoch >= (bgInterval * 60000) - 10000) {
+      await prefs.setInt('lastBgRunEpoch', now);
+      await checkMetrics();
+    }
   });
 }
