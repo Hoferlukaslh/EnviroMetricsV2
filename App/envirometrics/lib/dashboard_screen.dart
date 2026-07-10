@@ -26,6 +26,7 @@ with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   String? _error;
   bool _isFullscreen = false;
   Timer? _refreshTimer;
+  Timer? _foregroundTimer; // NOUVEAU
   
   // Variables d'état
   int? _lastAppId;
@@ -36,7 +37,7 @@ with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   bool _eInkToggle = false;
 
   // Variables Anti-Spam pour l'interface utilisateur
-  final Map<int, bool> _co2AlertSent = {}; // <-- REMIS POUR L'UI
+  final Map<int, bool> _co2AlertSent = {}; 
   final Map<int, bool> _tempAlertSent = {};
   DateTime? _lastMeteoFetch;
   double? _currentOutdoorTemp;
@@ -45,21 +46,34 @@ with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this); 
-    _setAppForegroundState(true); 
+    _startForegroundTick(); // Lance le battement de coeur
+  }
+
+  // --- NOUVEAU : SYSTÈME DE HEARTBEAT ---
+  void _startForegroundTick() {
+    _setAppForegroundState(true);
+    _foregroundTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
+      _setAppForegroundState(true); // Envoie un signal de vie toutes les 2 secondes
+    });
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _setAppForegroundState(true);
+      _startForegroundTick();
     } else {
+      _foregroundTimer?.cancel();
       _setAppForegroundState(false);
     }
   }
 
   Future<void> _setAppForegroundState(bool isForeground) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isAppInForeground', isForeground);
+    if (isForeground) {
+      await prefs.setInt('lastForegroundTick', DateTime.now().millisecondsSinceEpoch);
+    } else {
+      await prefs.setInt('lastForegroundTick', 0);
+    }
   }
 
   @override
@@ -157,7 +171,7 @@ with SingleTickerProviderStateMixin, WidgetsBindingObserver {
                       Expanded(child: Text("Aération recommandée : CO2 à ${lastMesure.co2} ppm dans '${provider.appName}'.")),
                     ],
                   ),
-                  backgroundColor: Colors.orange.shade800, // Retour au orange
+                  backgroundColor: Colors.orange.shade800,
                   behavior: SnackBarBehavior.floating,
                   duration: const Duration(seconds: 5),
                 ),
@@ -215,6 +229,7 @@ with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this); 
+    _foregroundTimer?.cancel(); // Coupe le battement de coeur
     _setAppForegroundState(false); 
     _refreshTimer?.cancel();
     _mesuresNotifier.dispose();

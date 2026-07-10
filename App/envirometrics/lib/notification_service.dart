@@ -8,7 +8,6 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
-  // AJOUT d'un paramètre optionnel pour désactiver la demande graphique en arrière-plan
   Future<void> init({bool requestPermission = true}) async {
     const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/launcher_icon');
     const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings();
@@ -23,11 +22,14 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     if (Platform.isAndroid) {
+      // ON CHANGE L'ID DU CANAL POUR FORCER ANDROID À LE RECRÉER PROPREMENT
       const AndroidNotificationChannel alertChannel = AndroidNotificationChannel(
-        'envirometrics_alerts', 
+        'envirometrics_alerts_v2', 
         'Alertes Aération', 
         description: 'Notifications pour aérer la pièce', 
         importance: Importance.max, 
+        playSound: true,
+        enableVibration: true,
       );
 
       final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
@@ -35,7 +37,6 @@ class NotificationService {
       
       await androidImplementation?.createNotificationChannel(alertChannel);
       
-      // On ne demande la permission QUE si l'application est ouverte au premier plan
       if (requestPermission) {
         await androidImplementation?.requestNotificationsPermission();
       }
@@ -44,12 +45,14 @@ class NotificationService {
 
   Future<void> showNotification(int id, String title, String body) async {
     const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      'envirometrics_alerts', 
+      'envirometrics_alerts_v2', // DOIT CORRESPONDRE AU NOUVEAU CANAL
       'Alertes Aération',
       channelDescription: 'Notifications pour aérer la pièce',
       importance: Importance.max,
       priority: Priority.high,
       icon: '@mipmap/launcher_icon', 
+      playSound: true,
+      enableVibration: true,
     );
     
     const NotificationDetails platformChannelSpecifics = NotificationDetails(

@@ -50,6 +50,35 @@ class ApiService {
     }
   }
 
+  // --- NOUVELLE FONCTION ULTRA LÉGÈRE POUR L'ARRIÈRE-PLAN ---
+  Future<Mesure?> fetchDerniereMesure(int appId, {required String url}) async {
+    try {
+      final baseUrl = _sanitizeUrl(url);
+      
+      // On ajoute 'limit=1' pour que ton API puisse exécuter le "LIMIT 1"
+      // On laisse 'days=7' en sécurité absolue si l'API exige ce paramètre
+      final uri = Uri.parse('$baseUrl/mesures').replace(
+        queryParameters: {
+          'app_id': appId.toString(),
+          'limit': '1', 
+          'days': '7', 
+        },
+      );
+
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        if (data.isNotEmpty) {
+          return Mesure.fromJson(data.first); // On retourne directement la plus récente
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<List<Appareil>> fetchAppareils({required String url}) async {
     try {
       final baseUrl = _sanitizeUrl(url);

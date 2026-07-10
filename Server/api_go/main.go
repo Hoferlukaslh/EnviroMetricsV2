@@ -165,30 +165,41 @@ func getMesures(c *fiber.Ctx) error {
 
 	var sqlQuery, groupBy string
 	var args []interface{}
-	args = append(args, seconds)
 
-	if days >= 30 {
-		sqlQuery = "SELECT DATE(`timestemp`) AS timestemp, " +
-		"ROUND(AVG(`temperature`), 2) AS temperature, " +
-		"ROUND(AVG(`humidite`), 2) AS humidite, " +
-		"ROUND(AVG(`co2`), 2) AS co2, " +
-		"ROUND(AVG(`vbat`), 2) AS vbat, " +
-		"MAX(NO) AS app_id " +
-		"FROM Mesures WHERE timestemp >= NOW() - INTERVAL ? SECOND"
-		groupBy = " GROUP BY DATE(`timestemp`) ORDER BY timestemp DESC LIMIT ?"
-	} else if days >= 7 {
-		sqlQuery = "SELECT DATE_FORMAT(`timestemp`, '%Y-%m-%d %H:00:00') AS timestemp, " +
-		"ROUND(AVG(`temperature`), 2) AS temperature, " +
-		"ROUND(AVG(`humidite`), 2) AS humidite, " +
-		"ROUND(AVG(`co2`), 2) AS co2, " +
-		"ROUND(AVG(`vbat`), 2) AS vbat, " +
-		"MAX(NO) AS app_id " +
-		"FROM Mesures WHERE timestemp >= NOW() - INTERVAL ? SECOND"
-		groupBy = " GROUP BY DATE_FORMAT(`timestemp`, '%Y-%m-%d %H:00:00') ORDER BY timestemp DESC LIMIT ?"
-	} else {
+	// --- CORRECTION ---
+	// Si limit=1, c'est le système d'alerte qui demande la dernière valeur.
+	// On veut la donnée BRUTE instantanée, on ignore donc les calculs de moyennes.
+	if limit == 1 {
+		args = append(args, seconds)
 		sqlQuery = "SELECT timestemp, temperature, humidite, co2, vbat, NO AS app_id " +
 		"FROM Mesures WHERE timestemp >= NOW() - INTERVAL ? SECOND"
 		groupBy = " ORDER BY timestemp DESC LIMIT ?"
+	} else {
+		// Logique normale pour les graphiques (avec moyennes)
+		args = append(args, seconds)
+		if days >= 30 {
+			sqlQuery = "SELECT DATE(`timestemp`) AS timestemp, " +
+			"ROUND(AVG(`temperature`), 2) AS temperature, " +
+			"ROUND(AVG(`humidite`), 2) AS humidite, " +
+			"ROUND(AVG(`co2`), 2) AS co2, " +
+			"ROUND(AVG(`vbat`), 2) AS vbat, " +
+			"MAX(NO) AS app_id " +
+			"FROM Mesures WHERE timestemp >= NOW() - INTERVAL ? SECOND"
+			groupBy = " GROUP BY DATE(`timestemp`) ORDER BY timestemp DESC LIMIT ?"
+		} else if days >= 7 {
+			sqlQuery = "SELECT DATE_FORMAT(`timestemp`, '%Y-%m-%d %H:00:00') AS timestemp, " +
+			"ROUND(AVG(`temperature`), 2) AS temperature, " +
+			"ROUND(AVG(`humidite`), 2) AS humidite, " +
+			"ROUND(AVG(`co2`), 2) AS co2, " +
+			"ROUND(AVG(`vbat`), 2) AS vbat, " +
+			"MAX(NO) AS app_id " +
+			"FROM Mesures WHERE timestemp >= NOW() - INTERVAL ? SECOND"
+			groupBy = " GROUP BY DATE_FORMAT(`timestemp`, '%Y-%m-%d %H:00:00') ORDER BY timestemp DESC LIMIT ?"
+		} else {
+			sqlQuery = "SELECT timestemp, temperature, humidite, co2, vbat, NO AS app_id " +
+			"FROM Mesures WHERE timestemp >= NOW() - INTERVAL ? SECOND"
+			groupBy = " ORDER BY timestemp DESC LIMIT ?"
+		}
 	}
 
 	if appID != nil {

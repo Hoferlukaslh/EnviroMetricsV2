@@ -55,72 +55,115 @@ void onStart(ServiceInstance service) async {
   }
 
   Future<void> checkMetrics() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    final url = prefs.getString('apiUrl') ?? 'https://env.kreativcam.ch/api';
-    final appId = prefs.getInt('appId') ?? 1;
-    final appName = prefs.getString('appName') ?? "Pièce";
-    
-    final notifyCo2 = prefs.getBool('notifyCo2_$appId') ?? false;
-    final co2Threshold = prefs.getDouble('co2Threshold_$appId') ?? 900.0;
-    
-    final notifyTemp = prefs.getBool('notifyTemp_$appId') ?? false;
-    final tempDiff = prefs.getDouble('tempDiff_$appId') ?? 1.0;
-    final meteoStationId = prefs.getString('meteoStationId') ?? 'DEM';
-
-    if (service is AndroidServiceInstance) {
-      final now = DateTime.now();
-      final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
-      service.setForegroundNotificationInfo(
-        title: 'EnviroMetrics',
-        content: 'Surveillance active. Dernier scan à $timeStr',
-      );
-    }
-
-    if (!notifyCo2 && !notifyTemp) return;
-
-    try {
-      final mesures = await ApiService().fetchMesures(appId, 0.125, url: url);
-      if (mesures.isEmpty) return;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload(); 
       
-      final derniereMesure = mesures.first; // CORRECT: .first = la plus récente
+      final url = prefs.getString('apiUrl') ?? 'https://env.kreativcam.ch/api';
+      final meteoStationId = prefs.getString('meteoStationId') ?? 'DEM';
 
-      if (notifyCo2 && derniereMesure.co2 > co2Threshold) {
-        NotificationService().showNotification(
-          appId * 10 + 1,
-          "Aération recommandée",
-          "Le CO2 a atteint ${derniereMesure.co2} ppm dans '$appName'.",
-        );
-      }
+      // --- SYSTÈME DE HEARTBEAT ---
+      final lastTick = prefs.getInt('lastForegroundTick') ?? 0;
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      final isAppInForeground = (nowMs - lastTick) < 5000;
 
-      if (notifyTemp) {
-        final meteo = await ApiService().fetchMeteoData(meteoStationId, "280000"); 
-        if (meteo.currentTemp <= (derniereMesure.temperature - tempDiff)) {
-          NotificationService().showNotification(
-            appId * 10 + 2,
-            "Aération possible",
-            "Il fait plus frais dehors (${meteo.currentTemp}°C) que dans '$appName' (${derniereMesure.temperature}°C).",
-          );
+      try {
+        // 1. On récupère la liste de TOUTES les pièces
+        final appareils = await ApiService().fetchAppareils(url: url);
+        
+        bool atLeastOneAlertActive = false;
+
+        // 2. On boucle sur chaque pièce
+        for (var app in appareils) {
+          final appId = app.id;
+          final appName = app.nom;
+
+          final notifyCo2 = prefs.getBool('notifyCo2_$appId') ?? false;
+          final co2Threshold = prefs.getDouble('co2Threshold_$appId') ?? 900.0;
+          final notifyTemp = prefs.getBool('notifyTemp_$appId') ?? false;
+          final tempDiff = prefs.getDouble('tempDiff_$appId') ?? 1.0;
+
+          // Si aucune alerte n'est activée pour CETTE pièce, on passe à la suivante
+          if (!notifyCo2 && !notifyTemp) continue;
+
+          atLeastOneAlertActive = true;
+
+          // On télécharge la dernière mesure pour CETTE pièce
+          final derniereMesure = await ApiService().fetchDerniereMesure(appId, url: url);
+          if (derniereMesure == null) continue;
+
+          // On n'envoie la notification push QUE si l'application est en arrière-plan
+          if (!isAppInForeground) {
+            
+            // --- A. Alerte CO2 (Multi-pièces + Anti-spam) ---
+            final co2AlertSent = prefs.getBool('co2AlertBg_$appId') ?? false;
+            if (notifyCo2) {
+              if (derniereMesure.co2 > co2Threshold) {
+                if (!co2AlertSent) {
+                  NotificationService().showNotification(
+                    appId * 10 + 1, 
+                    "AÉRATION RECOMMANDÉ - $appName",
+                    "Danger : Le CO2 a atteint ${derniereMesure.co2} ppm.",
+                  );
+                  await prefs.setBool('co2AlertBg_$appId', true);
+                }
+              } else {
+                await prefs.setBool('co2AlertBg_$appId', false);
+              }
+            }
+
+            // --- B. Alerte Température (Multi-pièces + Anti-spam) ---
+            if (notifyTemp) {
+              final tempAlertSent = prefs.getBool('tempAlertSent_$appId') ?? false;
+              final meteo = await ApiService().fetchMeteoData(meteoStationId, "280000"); 
+              
+              if (meteo.currentTemp <= (derniereMesure.temperature - tempDiff)) {
+                if (!tempAlertSent) {
+                  NotificationService().showNotification(
+                    appId * 10 + 2, 
+                    "Aération possible - $appName",
+                    "Il fait plus frais dehors (${meteo.currentTemp}°C) qu'à l'intérieur (${derniereMesure.temperature}°C).",
+                  );
+                  await prefs.setBool('tempAlertSent_$appId', true);
+                }
+              } else {
+                await prefs.setBool('tempAlertSent_$appId', false);
+              }
+            }
+          }
         }
-      }
-    } catch (e) {
-      // Ignorer silencieusement
-    }
-  }
 
-  // 1. Exécution immédiate au démarrage
+        // 3. MISE À JOUR VISUELLE de la notification de base (TEXTE STATIQUE)
+        if (service is AndroidServiceInstance) {
+          if (!atLeastOneAlertActive) {
+            service.setForegroundNotificationInfo(
+              title: 'EnviroMetrics',
+              content: 'Surveillance en pause (Aucune alerte configurée).',
+            );
+          } else {
+            service.setForegroundNotificationInfo(
+              title: 'EnviroMetrics',
+              content: 'Surveillance air en cours',
+            );
+          }
+        }
+      } catch (e) {
+        print("ERREUR ARRIÈRE-PLAN EnviroMetrics: $e");
+      }
+    }
+
   await checkMetrics();
   final initialPrefs = await SharedPreferences.getInstance();
   await initialPrefs.setInt('lastBgRunEpoch', DateTime.now().millisecondsSinceEpoch);
 
-  // 2. Boucle de vérification (Tourne toutes les minutes en tâche de fond)
   Timer.periodic(const Duration(minutes: 1), (timer) async {
     final prefs = await SharedPreferences.getInstance();
+    
+    await prefs.reload(); 
+    
     final bgInterval = prefs.getInt('bgInterval') ?? 5; 
     final lastRunEpoch = prefs.getInt('lastBgRunEpoch') ?? 0;
     final now = DateTime.now().millisecondsSinceEpoch;
 
-    // Si le temps écoulé correspond à l'intervalle demandé (avec 10s de tolérance)
     if (now - lastRunEpoch >= (bgInterval * 60000) - 10000) {
       await prefs.setInt('lastBgRunEpoch', now);
       await checkMetrics();
