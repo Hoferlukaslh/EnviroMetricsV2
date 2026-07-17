@@ -920,6 +920,7 @@ class _MeteoScreenState extends State<MeteoScreen> {
   bool _isLoading = true;
   String? _error;
   MeteoData? _data;
+  double _selectedDays = 7.0;
 
   @override
   void initState() {
@@ -947,13 +948,75 @@ class _MeteoScreenState extends State<MeteoScreen> {
     }
   }
 
+  Widget _buildDropdown(DashboardProvider provider) {
+    final isHC = provider.isHighContrast;
+    final periods = {
+      0.125: '3H',
+      0.25: '6H',
+      0.5: '12H',
+      1.0: '24H',
+      2.0: '2 J',
+      7.0: '7 J',
+    };
+
+    return Container(
+      margin: const EdgeInsets.only(left: 2, right: 12, top: 12, bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: isHC ? Colors.white : Colors.teal[700],
+        borderRadius: BorderRadius.circular(12),
+        border: isHC ? Border.all(color: Colors.black, width: 2) : null,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<double>(
+          value: _selectedDays,
+          dropdownColor: isHC ? Colors.white : const Color(0xFF004D40),
+          icon: Icon(
+            Icons.keyboard_arrow_down,
+            color: isHC ? Colors.black : Colors.white,
+            size: 18,
+          ),
+          menuMaxHeight: 300,
+          onChanged: (double? n) {
+            if (n != null) {
+              setState(() {
+                _selectedDays = n;
+              });
+            }
+          },
+          items: periods.entries
+          .map(
+            (e) => DropdownMenuItem<double>(
+              value: e.key,
+              child: Text(
+                e.value,
+                style: TextStyle(
+                  color: isHC ? Colors.black : Colors.white,
+                  fontWeight: isHC ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          )
+          .toList(),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<DashboardProvider>(context);
     
     return Scaffold(
       backgroundColor: provider.isHighContrast ? Colors.white : null,
-      appBar: AppBar(title: const Text("MétéoSuisse")),
+      appBar: AppBar(
+        title: const Text("MétéoSuisse"),
+        actions: [
+          if (!_isLoading && _error == null && _data != null && _data!.graphData.isNotEmpty)
+            _buildDropdown(provider),
+        ],
+      ),
       body: _isLoading 
         ? const Center(child: CircularProgressIndicator())
         : _error != null 
@@ -977,7 +1040,12 @@ class _MeteoScreenState extends State<MeteoScreen> {
     final Color cardBg = isHC ? Colors.white : (isDark ? const Color(0xFF1A1A1A) : Colors.white);
     final Color mainColor = isHC ? Colors.black : Colors.lightBlue;
 
-    final data = _data!.graphData;
+    final fullData = _data!.graphData;
+    
+    // Filtrage des données localement
+    final startTime = fullData.first.timestamp;
+    final endTime = startTime.add(Duration(minutes: (_selectedDays * 24 * 60).toInt()));
+    final data = fullData.where((e) => e.timestamp.isBefore(endTime) || e.timestamp.isAtSameMomentAs(endTime)).toList();
     
     double dataMin = data.map((e) => e.temperature).reduce((a, b) => a < b ? a : b);
     double dataMax = data.map((e) => e.temperature).reduce((a, b) => a > b ? a : b);
@@ -990,6 +1058,16 @@ class _MeteoScreenState extends State<MeteoScreen> {
     double maxTime = data.last.timestamp.millisecondsSinceEpoch.toDouble();
     double timeInterval = (maxTime - minTime) / 6;
     if (timeInterval <= 0) timeInterval = 1;
+
+    final periods = {
+      0.125: '3H',
+      0.25: '6H',
+      0.5: '12H',
+      1.0: '24H',
+      2.0: '2 J',
+      7.0: '7 J',
+    };
+    String periodTitle = "Prévisions ${periods[_selectedDays] ?? '7 J'}";
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
@@ -1005,7 +1083,7 @@ class _MeteoScreenState extends State<MeteoScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Prévisions 7J", style: TextStyle(color: mainColor, fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(periodTitle, style: TextStyle(color: mainColor, fontSize: 16, fontWeight: FontWeight.bold)),
               Text(
                 "${_data!.currentTemp} °C", 
                 style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.bold)
@@ -1030,7 +1108,10 @@ class _MeteoScreenState extends State<MeteoScreen> {
                       interval: timeInterval,
                       getTitlesWidget: (value, meta) {
                         DateTime date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
-                        return Text("${date.day}/${date.month}", style: TextStyle(color: axisTextColor, fontSize: 10, fontWeight: isHC ? FontWeight.bold : FontWeight.normal));
+                        String text = _selectedDays <= 2
+                        ? "${date.hour}:${date.minute.toString().padLeft(2, '0')}"
+                        : "${date.day}/${date.month}";
+                        return Text(text, style: TextStyle(color: axisTextColor, fontSize: 10, fontWeight: isHC ? FontWeight.bold : FontWeight.normal));
                       },
                     ),
                   ),
