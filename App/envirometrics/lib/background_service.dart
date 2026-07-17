@@ -65,18 +65,18 @@ void onStart(ServiceInstance service) async {
       final url = prefs.getString('apiUrl') ?? 'https://env.kreativcam.ch/api';
       final meteoStationId = prefs.getString('meteoStationId') ?? 'DEM';
 
-      // --- SYSTÈME DE HEARTBEAT ---
+      // Heartbeat
       final lastTick = prefs.getInt('lastForegroundTick') ?? 0;
       final nowMs = DateTime.now().millisecondsSinceEpoch;
       final isAppInForeground = (nowMs - lastTick) < 5000;
 
       try {
-        // 1. On récupère la liste de TOUTES les pièces
+        // Récupération de tous les appareils
         final appareils = await ApiService().fetchAppareils(url: url);
         
         bool atLeastOneAlertActive = false;
 
-        // 2. On boucle sur chaque pièce
+        // Parcours de chaque appareil
         for (var app in appareils) {
           final appId = app.id;
           final appName = app.nom;
@@ -86,19 +86,19 @@ void onStart(ServiceInstance service) async {
           final notifyTemp = prefs.getBool('notifyTemp_$appId') ?? false;
           final tempDiff = prefs.getDouble('tempDiff_$appId') ?? 1.0;
 
-          // Si aucune alerte n'est activée pour CETTE pièce, on passe à la suivante
+          // Passer si aucune alerte n'est configurée pour cette pièce
           if (!notifyCo2 && !notifyTemp) continue;
 
           atLeastOneAlertActive = true;
 
-          // On télécharge la dernière mesure pour CETTE pièce
+          // Téléchargement de la dernière mesure
           final derniereMesure = await ApiService().fetchDerniereMesure(appId, url: url);
           if (derniereMesure == null) continue;
 
-          // On n'envoie la notification push QUE si l'application est en arrière-plan
+          // Envoi de la notification push uniquement en arrière-plan
           if (!isAppInForeground) {
             
-            // --- A. Alerte CO2 (Multi-pièces + Anti-spam) ---
+            // Alerte CO2
             final co2AlertSent = prefs.getBool('co2AlertBg_$appId') ?? false;
             if (notifyCo2) {
               if (derniereMesure.co2 > co2Threshold) {
@@ -115,7 +115,7 @@ void onStart(ServiceInstance service) async {
               }
             }
 
-            // --- B. Alerte Température (Multi-pièces + Anti-spam) ---
+            // Alerte Température
             if (notifyTemp) {
               final tempAlertSent = prefs.getBool('tempAlertSent_$appId') ?? false;
               final meteo = await ApiService().fetchMeteoData(meteoStationId, "280000"); 
@@ -136,7 +136,7 @@ void onStart(ServiceInstance service) async {
           }
         }
 
-        // 3. MISE À JOUR VISUELLE de la notification de base (TEXTE STATIQUE)
+        // Mise à jour de la notification de base
         if (service is AndroidServiceInstance) {
           if (!atLeastOneAlertActive) {
             service.setForegroundNotificationInfo(

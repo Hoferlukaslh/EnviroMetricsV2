@@ -25,7 +25,7 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
     if (Platform.isAndroid) {
-      // ON CHANGE L'ID DU CANAL POUR FORCER ANDROID À LE RECRÉER PROPREMENT
+      // Changement d'ID de canal pour forcer Android à le recréer
       const AndroidNotificationChannel alertChannel = AndroidNotificationChannel(
         'envirometrics_alerts_v2', 
         'Alertes Aération', 
@@ -50,7 +50,7 @@ class NotificationService {
     if (kIsWeb) return;
 
     const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
-      'envirometrics_alerts_v2', // DOIT CORRESPONDRE AU NOUVEAU CANAL
+      'envirometrics_alerts_v2', // Correspond au canal d'alertes
       'Alertes Aération',
       channelDescription: 'Notifications pour aérer la pièce',
       importance: Importance.max,

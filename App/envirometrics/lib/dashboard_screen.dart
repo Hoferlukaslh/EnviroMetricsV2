@@ -26,7 +26,7 @@ with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   String? _error;
   bool _isFullscreen = false;
   Timer? _refreshTimer;
-  Timer? _foregroundTimer; // NOUVEAU
+  Timer? _foregroundTimer;
   
   // Variables d'état
   int? _lastAppId;
@@ -46,14 +46,14 @@ with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this); 
-    _startForegroundTick(); // Lance le battement de coeur
+    _startForegroundTick();
   }
 
-  // --- NOUVEAU : SYSTÈME DE HEARTBEAT ---
+  // Heartbeat pour le suivi de l'état actif
   void _startForegroundTick() {
     _setAppForegroundState(true);
     _foregroundTimer = Timer.periodic(const Duration(seconds: 2), (timer) {
-      _setAppForegroundState(true); // Envoie un signal de vie toutes les 2 secondes
+      _setAppForegroundState(true); // Notification périodique d'activité
     });
   }
 
@@ -158,7 +158,7 @@ with SingleTickerProviderStateMixin, WidgetsBindingObserver {
         final lastMesure = newData.first; 
         final int cId = provider.appId;
 
-        // A. Alerte CO2 : AVEC ANTI-SPAM (Seulement pour la bannière visuelle de l'app)
+        // Alerte CO2 (bannière de l'application)
         if (provider.getNotifyCo2(cId)) {
           if (lastMesure.co2 > provider.getCo2Threshold(cId)) {
             if (!(_co2AlertSent[cId] ?? false)) {
@@ -179,11 +179,11 @@ with SingleTickerProviderStateMixin, WidgetsBindingObserver {
               _co2AlertSent[cId] = true;
             }
           } else {
-            _co2AlertSent[cId] = false; // Réinitialise l'anti-spam quand on passe sous le seuil
+            _co2AlertSent[cId] = false; // Réinitialisation de l'état d'alerte
           }
         }
 
-        // B. Alerte Température Extérieure (Avec Anti-Spam)
+        // Alerte de température extérieure
         if (provider.getNotifyTemp(cId) && _currentOutdoorTemp != null) {
           if (_currentOutdoorTemp! <= (lastMesure.temperature - provider.getTempDiff(cId))) {
             if (!(_tempAlertSent[cId] ?? false)) {
@@ -229,7 +229,7 @@ with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this); 
-    _foregroundTimer?.cancel(); // Coupe le battement de coeur
+    _foregroundTimer?.cancel();
     _setAppForegroundState(false); 
     _refreshTimer?.cancel();
     _mesuresNotifier.dispose();
@@ -1044,7 +1044,7 @@ class _MeteoScreenState extends State<MeteoScreen> {
 
     final fullData = _data!.graphData;
     
-    // Filtrage des données localement pour exclure le passé
+    // Filtrage des anciennes données
     final now = DateTime.now();
     final startLimit = now.subtract(const Duration(minutes: 59));
     final endTime = now.add(Duration(minutes: (_selectedDays * 24 * 60).toInt()));

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:provider/provider.dart';
-import 'package:permission_handler/permission_handler.dart'; // NOUVEAU
+import 'package:permission_handler/permission_handler.dart';
 import 'main.dart';
 import 'api_service.dart';
 import 'appareil.dart';
@@ -9,7 +9,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-// --- Modèles de données pour la météo ---
+// Modèles de données météo
 class MeteoStation {
   final String id;
   final String name;
@@ -22,7 +22,7 @@ class NpaCity {
   const NpaCity(this.npa, this.city);
 }
 
-// --- Liste statique des stations MétéoSuisse ---
+// Stations MétéoSuisse
 const List<MeteoStation> _meteoStations = [
   MeteoStation("TAE", "Aadorf / Tänikon"), MeteoStation("ABE", "Aarberg"),
   MeteoStation("COM", "Acquarossa / Comprovasco"), MeteoStation("ABO", "Adelboden"),
@@ -214,8 +214,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notifyTemp = false;
   double _tempDiff = 1.0;
   
-  int _bgInterval = 5; // NOUVEAU
-  double _defaultMeteoDays = 7.0; // NOUVEAU
+  int _bgInterval = 5;
+  double _defaultMeteoDays = 7.0;
 
   @override
   void initState() {
@@ -240,8 +240,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _autoCo2 = provider.autoCo2;
     _autoVbat = provider.autoVbat;
     
-    _bgInterval = provider.bgInterval; // NOUVEAU
-    _defaultMeteoDays = provider.defaultMeteoDays; // NOUVEAU
+    _bgInterval = provider.bgInterval;
+    _defaultMeteoDays = provider.defaultMeteoDays;
 
     _loadAlertSettings(_alertAppId);
     _loadCsvData();
@@ -354,9 +354,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           
-          // ----------------------------------------------------
-          // SECTION 1 : APPARENCE & ACCESSIBILITÉ
-          // ----------------------------------------------------
+          // Apparence & Accessibilité
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
@@ -397,9 +395,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) ...[
             const Divider(),
 
-            // ----------------------------------------------------
-            // SECTION 2 : ALERTES & AÉRATION
-            // ----------------------------------------------------
+            // Alertes & Aération
             Theme(
               data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
@@ -491,7 +487,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const Divider(indent: 16, endIndent: 16),
                   const SizedBox(height: 10),
                   
-                  // --- NOUVEAU : Réglage du temps d'arrière-plan ---
+                  // Réglage de l'intervalle de scan
                   if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) ...[
                     Align(
                       alignment: Alignment.centerLeft, 
@@ -511,7 +507,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 10),
                   ],
                   
-                  // --- NOUVEAU : Bouton Optimisation Batterie ---
+                  // Optimisation batterie
                   if (!kIsWeb && Platform.isAndroid) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -545,9 +541,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const Divider(),
 
-          // ----------------------------------------------------
-          // SECTION 3 : LIMITES DES GRAPHIQUES
-          // ----------------------------------------------------
+          // Limites des graphiques
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
@@ -555,7 +549,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: Text("Limites des Graphiques", style: TextStyle(color: sectionTitleColor, fontWeight: FontWeight.bold, fontSize: 18)),
               children: [
                 const SizedBox(height: 10),
-                // --- TEMPÉRATURE ---
+                // Température
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -574,8 +568,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: _autoTemp ? null : (v) => setState(() => _tempRange = v),
                 ),
                 const SizedBox(height: 10),
-
-                // --- HUMIDITÉ ---
+                // Humidité
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -594,8 +587,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: _autoHum ? null : (v) => setState(() => _humRange = v),
                 ),
                 const SizedBox(height: 10),
-
-                // --- CO2 ---
+                // CO2
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -614,8 +606,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: _autoCo2 ? null : (v) => setState(() => _co2Range = v),
                 ),
                 const SizedBox(height: 10),
-
-                // --- BATTERIE ---
+                // Batterie
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -640,9 +631,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const Divider(),
 
-          // ----------------------------------------------------
-          // SECTION 4 : CONFIGURATION MÉTÉOSUISSE
-          // ----------------------------------------------------
+          // Configuration MétéoSuisse
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
@@ -650,7 +639,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: Text("Configuration MétéoSuisse", style: TextStyle(color: sectionTitleColor, fontWeight: FontWeight.bold, fontSize: 18)),
               children: [
                 const SizedBox(height: 15),
-                // --- AUTOCOMPLETE STATION ---
                 Autocomplete<MeteoStation>(
                   displayStringForOption: (option) => option.name,
                   initialValue: TextEditingValue(
@@ -678,8 +666,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 
                 const SizedBox(height: 15),
-
-                // --- AUTOCOMPLETE NPA / VILLE ---
+                // Autocomplétion NPA / Ville
                 _isLoadingCsv 
                   ? const Center(child: LinearProgressIndicator()) 
                   : Autocomplete<NpaCity>(
@@ -715,8 +702,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                   ),
                 const SizedBox(height: 15),
-
-                // --- DURÉE DE PRÉVISION PAR DÉFAUT ---
+                // Durée de prévision par défaut
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text("Durée de prévision par défaut", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -752,9 +738,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const Divider(),
 
-          // ----------------------------------------------------
-          // SECTION 5 : CONFIGURATION SYSTÈME & API
-          // ----------------------------------------------------
+          // Configuration API & Capteurs
           Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
@@ -829,9 +813,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           const SizedBox(height: 40),
 
-          // ----------------------------------------------------
-          // BOUTON SAUVEGARDER
-          // ----------------------------------------------------
+          // Sauvegarde des paramètres
           SizedBox(
             height: 52,
             child: ElevatedButton(
@@ -843,10 +825,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: () {
                 _saveCurrentAlertSettings(); 
                 
-                // NOUVEAU : On sauvegarde la fréquence de background
+                // Sauvegarde de l'intervalle et de la durée de prévision par défaut
                 provider.setBgInterval(_bgInterval);
-
-                // NOUVEAU : On sauvegarde la durée de prévision par défaut
                 provider.setDefaultMeteoDays(_defaultMeteoDays);
 
                 final selectedApp = _appareilsDisponibles.firstWhere(

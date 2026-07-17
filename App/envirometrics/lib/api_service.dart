@@ -50,13 +50,13 @@ class ApiService {
     }
   }
 
-  // --- NOUVELLE FONCTION ULTRA LÉGÈRE POUR L'ARRIÈRE-PLAN ---
+  // Récupération de la dernière mesure (optimisé pour le background)
   Future<Mesure?> fetchDerniereMesure(int appId, {required String url}) async {
     try {
       final baseUrl = _sanitizeUrl(url);
       
-      // On ajoute 'limit=1' pour que ton API puisse exécuter le "LIMIT 1"
-      // On laisse 'days=7' en sécurité absolue si l'API exige ce paramètre
+      // limit=1 pour n'obtenir que la valeur la plus récente
+      // days=7 conservé par sécurité si obligatoire pour l'API
       final uri = Uri.parse('$baseUrl/mesures').replace(
         queryParameters: {
           'app_id': appId.toString(),
@@ -103,7 +103,7 @@ class ApiService {
 
   Future<MeteoData> fetchMeteoData(String stationId, String plz) async {
     try {
-      // 1. Récupération de la température actuelle
+      // Récupération de la température actuelle
       final stationUri = Uri.parse('https://app-prod-ws.meteoswiss-app.ch/v1/stationOverview?station=$stationId');
       final stationRes = await http.get(stationUri);
       double currentTemp = 0.0;
@@ -115,7 +115,7 @@ class ApiService {
         }
       }
 
-      // 2. Récupération du graphique sur une semaine
+      // Historique sur une semaine
       final plzUri = Uri.parse('https://app-prod-ws.meteoswiss-app.ch/v1/plzDetail?plz=$plz');
       final plzRes = await http.get(plzUri);
       List<MeteoPoint> graphData = [];
@@ -126,7 +126,7 @@ class ApiService {
         final int startMs = graph['start'];
         final List<dynamic> temps = graph['temperatureMean1h'];
 
-        // Intervalle de 1h = 3600000 ms
+        // Intervalle d'une heure (3600000 ms)
         for (int i = 0; i < temps.length; i++) {
           final time = DateTime.fromMillisecondsSinceEpoch(startMs + (i * 3600000));
           graphData.add(MeteoPoint(time, (temps[i] as num).toDouble()));

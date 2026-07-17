@@ -12,7 +12,7 @@ void main() async {
 
   await NotificationService().init();
   
-  // NOUVEAU : On lance le service d'arrière-plan
+  // Initialisation du service d'arrière-plan
   await initializeBackgroundService();
 
   WakelockPlus.enable();
@@ -66,10 +66,10 @@ class DashboardProvider with ChangeNotifier {
     _vbatMax = prefs.getDouble('vbatMax') ?? 4.5;
     _autoVbat = prefs.getBool('autoVbat') ?? true;
 
-    // NOUVEAU : Intervalle d'arrière-plan
+    // Intervalle de mise à jour en arrière-plan
     _bgInterval = prefs.getInt('bgInterval') ?? 5;
     
-    // NOUVEAU : Durée par défaut de prévision MétéoSuisse
+    // Durée par défaut des prévisions MétéoSuisse
     _defaultMeteoDays = prefs.getDouble('defaultMeteoDays') ?? 7.0;
   }
 
