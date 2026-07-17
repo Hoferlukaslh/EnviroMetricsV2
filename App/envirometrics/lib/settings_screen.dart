@@ -6,6 +6,8 @@ import 'main.dart';
 import 'api_service.dart';
 import 'appareil.dart';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 // --- Modèles de données pour la météo ---
 class MeteoStation {
@@ -390,148 +392,154 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
-          const Divider(),
+          if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) ...[
+            const Divider(),
 
-          // ----------------------------------------------------
-          // SECTION 2 : ALERTES & AÉRATION
-          // ----------------------------------------------------
-          Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              initiallyExpanded: true,
-              tilePadding: EdgeInsets.zero,
-              title: Text("Alertes & Aération", style: TextStyle(color: sectionTitleColor, fontWeight: FontWeight.bold, fontSize: 18)),
-              children: [
-                const SizedBox(height: 10),
-                const Text("Sélectionnez le capteur à configurer :", style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                FutureBuilder<List<Appareil>>(
-                  future: ApiService().fetchAppareils(url: _urlController.text),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const LinearProgressIndicator();
-                    if (snapshot.hasData) _appareilsDisponibles = snapshot.data!;
-                    
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.grey.shade400)),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: _alertAppId,
-                          isExpanded: true,
-                          onChanged: (v) {
-                            if (v != null) {
-                              _saveCurrentAlertSettings();
-                              setState(() {
-                                _alertAppId = v;
-                                _loadAlertSettings(v);
-                              });
-                            }
-                          },
-                          items: _appareilsDisponibles.map((app) => DropdownMenuItem(value: app.id, child: Text(app.nom))).toList(),
+            // ----------------------------------------------------
+            // SECTION 2 : ALERTES & AÉRATION
+            // ----------------------------------------------------
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                initiallyExpanded: true,
+                tilePadding: EdgeInsets.zero,
+                title: Text("Alertes & Aération", style: TextStyle(color: sectionTitleColor, fontWeight: FontWeight.bold, fontSize: 18)),
+                children: [
+                  const SizedBox(height: 10),
+                  const Text("Sélectionnez le capteur à configurer :", style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  FutureBuilder<List<Appareil>>(
+                    future: ApiService().fetchAppareils(url: _urlController.text),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const LinearProgressIndicator();
+                      if (snapshot.hasData) _appareilsDisponibles = snapshot.data!;
+                      
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.grey.shade400)),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _alertAppId,
+                            isExpanded: true,
+                            onChanged: (v) {
+                              if (v != null) {
+                                _saveCurrentAlertSettings();
+                                setState(() {
+                                  _alertAppId = v;
+                                  _loadAlertSettings(v);
+                                });
+                              }
+                            },
+                            items: _appareilsDisponibles.map((app) => DropdownMenuItem(value: app.id, child: Text(app.nom))).toList(),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                // Alerte CO2
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text("Alerte CO2 élevé"),
-                  subtitle: const Text("Recevoir une notification pour aérer."),
-                  value: _notifyCo2,
-                  onChanged: (v) => setState(() => _notifyCo2 = v),
-                ),
-                if (_notifyCo2)
-                  Column(
-                    children: [
-                      Align(alignment: Alignment.centerLeft, child: Text("Seuil : > ${_co2Threshold.toInt()} ppm")),
-                      SliderTheme(
-                        data: sliderTheme,
-                        child: Slider(
-                          value: _co2Threshold, min: 600, max: 2000, divisions: 140,
-                          label: "${_co2Threshold.toInt()} ppm",
-                          onChanged: (v) => setState(() => _co2Threshold = v),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                const SizedBox(height: 10),
-
-                // Alerte Température
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text("Alerte Fraîcheur Extérieure"),
-                  subtitle: const Text("Notification quand il fait plus frais dehors qu'à l'intérieur."),
-                  value: _notifyTemp,
-                  onChanged: (v) => setState(() => _notifyTemp = v),
-                ),
-                if (_notifyTemp)
-                  Column(
-                    children: [
-                      Align(alignment: Alignment.centerLeft, child: Text("Différence : > ${_tempDiff.toStringAsFixed(1)} °C")),
-                      SliderTheme(
-                        data: sliderTheme,
-                        child: Slider(
-                          value: _tempDiff, min: 0.0, max: 5.0, divisions: 10,
-                          label: "${_tempDiff.toStringAsFixed(1)} °C",
-                          onChanged: (v) => setState(() => _tempDiff = v),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                const Divider(indent: 16, endIndent: 16),
-                const SizedBox(height: 10),
-                
-                // --- NOUVEAU : Réglage du temps d'arrière-plan ---
-                Align(
-                  alignment: Alignment.centerLeft, 
-                  child: Text("Fréquence de scan (Arrière-plan) : $_bgInterval min", style: const TextStyle(fontWeight: FontWeight.bold))
-                ),
-                SliderTheme(
-                  data: sliderTheme,
-                  child: Slider(
-                    value: _bgInterval.toDouble(), 
-                    min: 1, 
-                    max: 15, 
-                    divisions: 14,
-                    label: "$_bgInterval min",
-                    onChanged: (v) => setState(() => _bgInterval = v.toInt()),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                
-                // --- NOUVEAU : Bouton Optimisation Batterie ---
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.battery_alert, color: Colors.orange),
-                    label: const Text("Désactiver l'optimisation batterie", textAlign: TextAlign.center),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isHC ? Colors.white : Colors.grey.shade800,
-                      foregroundColor: isHC ? Colors.black : Colors.white,
-                      side: isHC ? const BorderSide(color: Colors.black) : null,
-                    ),
-                    onPressed: () async {
-                      if (await Permission.ignoreBatteryOptimizations.isDenied) {
-                        await Permission.ignoreBatteryOptimizations.request();
-                      } else {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("L'optimisation est déjà désactivée !"), backgroundColor: Colors.green),
-                          );
-                        }
-                      }
+                      );
                     },
                   ),
-                ),
-                const SizedBox(height: 15),
-              ],
+                  const SizedBox(height: 20),
+
+                  // Alerte CO2
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text("Alerte CO2 élevé"),
+                    subtitle: const Text("Recevoir une notification pour aérer."),
+                    value: _notifyCo2,
+                    onChanged: (v) => setState(() => _notifyCo2 = v),
+                  ),
+                  if (_notifyCo2)
+                    Column(
+                      children: [
+                        Align(alignment: Alignment.centerLeft, child: Text("Seuil : > ${_co2Threshold.toInt()} ppm")),
+                        SliderTheme(
+                          data: sliderTheme,
+                          child: Slider(
+                            value: _co2Threshold, min: 600, max: 2000, divisions: 140,
+                            label: "${_co2Threshold.toInt()} ppm",
+                            onChanged: (v) => setState(() => _co2Threshold = v),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                  const SizedBox(height: 10),
+
+                  // Alerte Température
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text("Alerte Fraîcheur Extérieure"),
+                    subtitle: const Text("Notification quand il fait plus frais dehors qu'à l'intérieur."),
+                    value: _notifyTemp,
+                    onChanged: (v) => setState(() => _notifyTemp = v),
+                  ),
+                  if (_notifyTemp)
+                    Column(
+                      children: [
+                        Align(alignment: Alignment.centerLeft, child: Text("Différence : > ${_tempDiff.toStringAsFixed(1)} °C")),
+                        SliderTheme(
+                          data: sliderTheme,
+                          child: Slider(
+                            value: _tempDiff, min: 0.0, max: 5.0, divisions: 10,
+                            label: "${_tempDiff.toStringAsFixed(1)} °C",
+                            onChanged: (v) => setState(() => _tempDiff = v),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                  const Divider(indent: 16, endIndent: 16),
+                  const SizedBox(height: 10),
+                  
+                  // --- NOUVEAU : Réglage du temps d'arrière-plan ---
+                  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) ...[
+                    Align(
+                      alignment: Alignment.centerLeft, 
+                      child: Text("Fréquence de scan (Arrière-plan) : $_bgInterval min", style: const TextStyle(fontWeight: FontWeight.bold))
+                    ),
+                    SliderTheme(
+                      data: sliderTheme,
+                      child: Slider(
+                        value: _bgInterval.toDouble(), 
+                        min: 1, 
+                        max: 15, 
+                        divisions: 14,
+                        label: "$_bgInterval min",
+                        onChanged: (v) => setState(() => _bgInterval = v.toInt()),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  
+                  // --- NOUVEAU : Bouton Optimisation Batterie ---
+                  if (!kIsWeb && Platform.isAndroid) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.battery_alert, color: Colors.orange),
+                        label: const Text("Désactiver l'optimisation batterie", textAlign: TextAlign.center),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isHC ? Colors.white : Colors.grey.shade800,
+                          foregroundColor: isHC ? Colors.black : Colors.white,
+                          side: isHC ? const BorderSide(color: Colors.black) : null,
+                        ),
+                        onPressed: () async {
+                          if (await Permission.ignoreBatteryOptimizations.isDenied) {
+                            await Permission.ignoreBatteryOptimizations.request();
+                          } else {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("L'optimisation est déjà désactivée !"), backgroundColor: Colors.green),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                  ],
+                ],
+              ),
             ),
-          ),
+          ],
 
           const Divider(),
 

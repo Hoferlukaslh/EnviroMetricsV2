@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationService {
@@ -9,6 +10,8 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
   Future<void> init({bool requestPermission = true}) async {
+    if (kIsWeb) return;
+
     const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/launcher_icon');
     const DarwinInitializationSettings initializationSettingsIOS = DarwinInitializationSettings();
     const LinuxInitializationSettings initializationSettingsLinux = LinuxInitializationSettings(defaultActionName: 'Ouvrir');
@@ -44,6 +47,8 @@ class NotificationService {
   }
 
   Future<void> showNotification(int id, String title, String body) async {
+    if (kIsWeb) return;
+
     const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
       'envirometrics_alerts_v2', // DOIT CORRESPONDRE AU NOUVEAU CANAL
       'Alertes Aération',
