@@ -215,6 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _tempDiff = 1.0;
   
   int _bgInterval = 5; // NOUVEAU
+  double _defaultMeteoDays = 7.0; // NOUVEAU
 
   @override
   void initState() {
@@ -240,6 +241,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _autoVbat = provider.autoVbat;
     
     _bgInterval = provider.bgInterval; // NOUVEAU
+    _defaultMeteoDays = provider.defaultMeteoDays; // NOUVEAU
 
     _loadAlertSettings(_alertAppId);
     _loadCsvData();
@@ -712,6 +714,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       );
                     },
                   ),
+                const SizedBox(height: 15),
+
+                // --- DURÉE DE PRÉVISION PAR DÉFAUT ---
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Durée de prévision par défaut", style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<double>(
+                  initialValue: _defaultMeteoDays,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.timer_outlined),
+                    isDense: true,
+                  ),
+                  onChanged: (double? val) {
+                    if (val != null) {
+                      setState(() {
+                        _defaultMeteoDays = val;
+                      });
+                    }
+                  },
+                  items: const [
+                    DropdownMenuItem(value: 0.125, child: Text("3H")),
+                    DropdownMenuItem(value: 0.25, child: Text("6H")),
+                    DropdownMenuItem(value: 0.5, child: Text("12H")),
+                    DropdownMenuItem(value: 1.0, child: Text("24H")),
+                    DropdownMenuItem(value: 2.0, child: Text("2 J")),
+                    DropdownMenuItem(value: 7.0, child: Text("7 J")),
+                  ],
+                ),
                 const SizedBox(height: 10),
               ],
             ),
@@ -812,6 +845,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 
                 // NOUVEAU : On sauvegarde la fréquence de background
                 provider.setBgInterval(_bgInterval);
+
+                // NOUVEAU : On sauvegarde la durée de prévision par défaut
+                provider.setDefaultMeteoDays(_defaultMeteoDays);
 
                 final selectedApp = _appareilsDisponibles.firstWhere(
                   (a) => a.id == _defaultAppId,

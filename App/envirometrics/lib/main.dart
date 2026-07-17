@@ -68,6 +68,9 @@ class DashboardProvider with ChangeNotifier {
 
     // NOUVEAU : Intervalle d'arrière-plan
     _bgInterval = prefs.getInt('bgInterval') ?? 5;
+    
+    // NOUVEAU : Durée par défaut de prévision MétéoSuisse
+    _defaultMeteoDays = prefs.getDouble('defaultMeteoDays') ?? 7.0;
   }
 
   late int _appId;
@@ -99,6 +102,7 @@ class DashboardProvider with ChangeNotifier {
   late bool _autoVbat;
 
   late int _bgInterval;
+  late double _defaultMeteoDays;
 
   int get appId => _appId;
   String get appName => _appName;
@@ -109,6 +113,7 @@ class DashboardProvider with ChangeNotifier {
   double get textScale => _textScale;
   bool get isHighContrast => _isHighContrast;
   
+  double get defaultMeteoDays => _defaultMeteoDays;
   String get meteoStationId => _meteoStationId;
   String get meteoPlz => _meteoPlz;
 
@@ -148,6 +153,12 @@ class DashboardProvider with ChangeNotifier {
   void setBgInterval(int interval) {
     _bgInterval = interval;
     prefs.setInt('bgInterval', interval);
+    notifyListeners();
+  }
+
+  void setDefaultMeteoDays(double days) {
+    _defaultMeteoDays = days;
+    prefs.setDouble('defaultMeteoDays', days);
     notifyListeners();
   }
 

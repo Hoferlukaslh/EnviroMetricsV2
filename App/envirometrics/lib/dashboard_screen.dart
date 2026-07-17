@@ -920,11 +920,13 @@ class _MeteoScreenState extends State<MeteoScreen> {
   bool _isLoading = true;
   String? _error;
   MeteoData? _data;
-  double _selectedDays = 7.0;
+  late double _selectedDays;
 
   @override
   void initState() {
     super.initState();
+    final provider = Provider.of<DashboardProvider>(context, listen: false);
+    _selectedDays = provider.defaultMeteoDays;
     _loadMeteo();
   }
 
@@ -1042,10 +1044,19 @@ class _MeteoScreenState extends State<MeteoScreen> {
 
     final fullData = _data!.graphData;
     
-    // Filtrage des données localement
-    final startTime = fullData.first.timestamp;
-    final endTime = startTime.add(Duration(minutes: (_selectedDays * 24 * 60).toInt()));
-    final data = fullData.where((e) => e.timestamp.isBefore(endTime) || e.timestamp.isAtSameMomentAs(endTime)).toList();
+    // Filtrage des données localement pour exclure le passé
+    final now = DateTime.now();
+    final startLimit = now.subtract(const Duration(minutes: 59));
+    final endTime = now.add(Duration(minutes: (_selectedDays * 24 * 60).toInt()));
+    
+    var data = fullData.where((e) {
+      return e.timestamp.isAfter(startLimit) && 
+             (e.timestamp.isBefore(endTime) || e.timestamp.isAtSameMomentAs(endTime));
+    }).toList();
+
+    if (data.isEmpty) {
+      data = fullData;
+    }
     
     double dataMin = data.map((e) => e.temperature).reduce((a, b) => a < b ? a : b);
     double dataMax = data.map((e) => e.temperature).reduce((a, b) => a > b ? a : b);
